@@ -2,6 +2,9 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { Group } from "three";
 
+const IDLE_ROTATION_SPEED = 0.045;
+const GLOBE_DISPLAY_TILT = -0.18;
+
 function PlaceholderGlobe() {
   return (
     <group>
@@ -28,12 +31,12 @@ function GlobeGroup() {
 
   useFrame((_, delta) => {
     if (!globeRef.current) return;
-    globeRef.current.rotation.y += delta * 0.08;
-    globeRef.current.rotation.x = -0.18;
+    globeRef.current.rotation.y += delta * IDLE_ROTATION_SPEED;
+    globeRef.current.rotation.x = GLOBE_DISPLAY_TILT;
   });
 
   return (
-    <group ref={globeRef}>
+    <group ref={globeRef} name="main-globe-rotation-group">
       <PlaceholderGlobe />
     </group>
   );
