@@ -35,6 +35,8 @@ const ROUTE_SEGMENTS = 96;
 const ROUTE_LONGITUDE_OFFSET = 90;
 const PULSE_LOOP_GAP = 0.48;
 const PULSE_TRAIL_OFFSET = 0.055;
+const NODE_RADIUS = ROUTE_RADIUS;
+const NODE_RIPPLE_DURATION = 2.8;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -59,6 +61,15 @@ type RouteArcAsset = {
   geometry: TubeGeometry;
   pulseDuration: number;
   pulseDelay: number;
+};
+
+type NetworkNode = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  status: RouteStatus;
+  routeCount: number;
 };
 
 const GLOBAL_ROUTES: GlobeRoute[] = [
@@ -196,6 +207,57 @@ function createRouteArcAsset(route: GlobeRoute, index: number): RouteArcAsset {
   };
 }
 
+function getStrongerRouteStatus(current: RouteStatus, next: RouteStatus) {
+  const rank: Record<RouteStatus, number> = {
+    quiet: 0,
+    active: 1,
+    primary: 2,
+  };
+
+  return rank[next] > rank[current] ? next : current;
+}
+
+function extractNetworkNodes(routes: GlobeRoute[]) {
+  const nodes = new Map<string, NetworkNode>();
+
+  routes.forEach((route) => {
+    const routeNodes = [
+      {
+        name: route.startName,
+        latitude: route.startLat,
+        longitude: route.startLng,
+      },
+      {
+        name: route.endName,
+        latitude: route.endLat,
+        longitude: route.endLng,
+      },
+    ];
+
+    routeNodes.forEach((node) => {
+      const id = node.name.toLowerCase().replace(/\s+/g, "-");
+      const existingNode = nodes.get(id);
+
+      if (existingNode) {
+        existingNode.status = getStrongerRouteStatus(existingNode.status, route.status);
+        existingNode.routeCount += 1;
+        return;
+      }
+
+      nodes.set(id, {
+        id,
+        name: node.name,
+        latitude: node.latitude,
+        longitude: node.longitude,
+        status: route.status,
+        routeCount: 1,
+      });
+    });
+  });
+
+  return Array.from(nodes.values());
+}
+
 function getRouteOpacity(status: RouteStatus) {
   if (status === "primary") return 0.58;
   if (status === "active") return 0.42;
@@ -212,6 +274,20 @@ function getPulseScale(status: RouteStatus) {
   if (status === "primary") return 0.034;
   if (status === "active") return 0.029;
   return 0.024;
+}
+
+function getNodeScale(node: NetworkNode) {
+  const connectionWeight = Math.min(node.routeCount - 1, 2) * 0.004;
+
+  if (node.status === "primary") return 0.038 + connectionWeight;
+  if (node.status === "active") return 0.032 + connectionWeight;
+  return 0.026 + connectionWeight;
+}
+
+function getNodeRippleOpacity(status: RouteStatus) {
+  if (status === "primary") return 0.22;
+  if (status === "active") return 0.16;
+  return 0.1;
 }
 
 function createGlobeDotGeometry() {
@@ -437,6 +513,90 @@ function RoutePulse({ asset }: { asset: RouteArcAsset }) {
   );
 }
 
+function NetworkNodeMarker({ node, index }: { node: NetworkNode; index: number }) {
+  const coreRef = useRef<Mesh>(null);
+  const glowRef = useRef<Mesh>(null);
+  const rippleRef = useRef<Mesh>(null);
+  const position = useMemo(() => latLngToSpherePosition(node.latitude, node.longitude, NODE_RADIUS), [node]);
+  const baseScale = getNodeScale(node);
+  const rippleOpacity = getNodeRippleOpacity(node.status);
+
+  useFrame(({ clock }) => {
+    const rippleTime = (clock.elapsedTime + index * 0.36) % NODE_RIPPLE_DURATION;
+    const rippleProgress = rippleTime / NODE_RIPPLE_DURATION;
+    const rippleFade = (1 - smoothstep(0.32, 1, rippleProgress)) * smoothstep(0, 0.12, rippleProgress);
+    const breathing = 1 + Math.sin(clock.elapsedTime * 1.7 + index) * 0.045;
+
+    if (coreRef.current) {
+      coreRef.current.scale.setScalar(baseScale * breathing);
+    }
+
+    if (glowRef.current) {
+      glowRef.current.scale.setScalar(baseScale * 2.25 * breathing);
+    }
+
+    if (rippleRef.current) {
+      rippleRef.current.scale.setScalar(baseScale * (2.2 + rippleProgress * 4.2));
+      const material = rippleRef.current.material;
+
+      if (!Array.isArray(material)) {
+        material.opacity = rippleOpacity * rippleFade;
+      }
+    }
+  });
+
+  return (
+    <group position={position}>
+      <mesh ref={rippleRef}>
+        <sphereGeometry args={[1, 24, 24]} />
+        <meshBasicMaterial
+          color="#7ee4ff"
+          transparent
+          opacity={0}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+          wireframe
+        />
+      </mesh>
+      <mesh ref={glowRef}>
+        <sphereGeometry args={[1, 20, 20]} />
+        <meshBasicMaterial
+          color="#3fc4ff"
+          transparent
+          opacity={node.status === "primary" ? 0.28 : 0.2}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+      <mesh ref={coreRef}>
+        <sphereGeometry args={[1, 20, 20]} />
+        <meshBasicMaterial
+          color={node.status === "quiet" ? "#8adfff" : "#e2fbff"}
+          transparent
+          opacity={node.status === "primary" ? 0.92 : 0.78}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function NetworkNodeLayer() {
+  const nodes = useMemo(() => extractNetworkNodes(GLOBAL_ROUTES), []);
+
+  return (
+    <group name="global-network-node-layer">
+      {nodes.map((node, index) => (
+        <NetworkNodeMarker key={node.id} node={node} index={index} />
+      ))}
+    </group>
+  );
+}
+
 function smoothstep(edge0: number, edge1: number, value: number) {
   const x = clamp((value - edge0) / (edge1 - edge0), 0, 1);
   return x * x * (3 - 2 * x);
@@ -474,6 +634,7 @@ function RouteArcLayer() {
       {routeAssets.map((asset) => (
         <RoutePulse key={`${asset.route.id}-pulse`} asset={asset} />
       ))}
+      <NetworkNodeLayer />
     </group>
   );
 }
