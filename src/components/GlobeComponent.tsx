@@ -4,6 +4,7 @@ import {
   AdditiveBlending,
   BufferGeometry,
   Float32BufferAttribute,
+  type Mesh,
   QuadraticBezierCurve3,
   TubeGeometry,
   Vector3,
@@ -32,6 +33,8 @@ const DOT_POINT_SIZE = 3.8;
 const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
 const ROUTE_SEGMENTS = 96;
 const ROUTE_LONGITUDE_OFFSET = 90;
+const PULSE_LOOP_GAP = 0.48;
+const PULSE_TRAIL_OFFSET = 0.055;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -48,6 +51,14 @@ type GlobeRoute = {
   endLat: number;
   endLng: number;
   status: RouteStatus;
+};
+
+type RouteArcAsset = {
+  route: GlobeRoute;
+  curve: QuadraticBezierCurve3;
+  geometry: TubeGeometry;
+  pulseDuration: number;
+  pulseDelay: number;
 };
 
 const GLOBAL_ROUTES: GlobeRoute[] = [
@@ -157,16 +168,32 @@ function latLngToSpherePosition(latitude: number, longitude: number, radius = RO
   return new Vector3(x, y, z);
 }
 
-function createRouteArcGeometry(route: GlobeRoute) {
+function createRouteCurve(route: GlobeRoute) {
   const start = latLngToSpherePosition(route.startLat, route.startLng);
   const end = latLngToSpherePosition(route.endLat, route.endLng);
   const angle = start.angleTo(end);
   const lift = clamp(0.14 + angle * 0.12, 0.18, 0.42);
   const middle = start.clone().add(end).normalize().multiplyScalar(ROUTE_RADIUS + lift);
-  const curve = new QuadraticBezierCurve3(start, middle, end);
+
+  return new QuadraticBezierCurve3(start, middle, end);
+}
+
+function createRouteArcGeometry(route: GlobeRoute, curve: QuadraticBezierCurve3) {
   const tubeRadius = route.status === "primary" ? 0.009 : route.status === "active" ? 0.007 : 0.005;
 
   return new TubeGeometry(curve, ROUTE_SEGMENTS, tubeRadius, 8, false);
+}
+
+function createRouteArcAsset(route: GlobeRoute, index: number): RouteArcAsset {
+  const curve = createRouteCurve(route);
+
+  return {
+    route,
+    curve,
+    geometry: createRouteArcGeometry(route, curve),
+    pulseDuration: route.status === "primary" ? 3.6 + index * 0.08 : route.status === "active" ? 4.25 : 5.15,
+    pulseDelay: index * 0.43 + (route.status === "quiet" ? 0.7 : 0),
+  };
 }
 
 function getRouteOpacity(status: RouteStatus) {
@@ -179,6 +206,12 @@ function getRouteGlowOpacity(status: RouteStatus) {
   if (status === "primary") return 0.18;
   if (status === "active") return 0.13;
   return 0.09;
+}
+
+function getPulseScale(status: RouteStatus) {
+  if (status === "primary") return 0.034;
+  if (status === "active") return 0.029;
+  return 0.024;
 }
 
 function createGlobeDotGeometry() {
@@ -328,19 +361,93 @@ function DigitalGlobeSurface() {
   );
 }
 
-function RouteArcLayer() {
-  const routeGeometries = useMemo(
-    () =>
-      GLOBAL_ROUTES.map((route) => ({
-        route,
-        geometry: createRouteArcGeometry(route),
-      })),
-    [],
+function RoutePulse({ asset }: { asset: RouteArcAsset }) {
+  const coreRef = useRef<Mesh>(null);
+  const glowRef = useRef<Mesh>(null);
+  const trailRef = useRef<Mesh>(null);
+  const baseScale = getPulseScale(asset.route.status);
+
+  useFrame(({ clock }) => {
+    const loopDuration = asset.pulseDuration + PULSE_LOOP_GAP;
+    const loopTime = (clock.elapsedTime + asset.pulseDelay) % loopDuration;
+    const progress = clamp(loopTime / asset.pulseDuration, 0, 1);
+    const fadeIn = smoothstep(0, 0.09, progress);
+    const fadeOut = 1 - smoothstep(0.84, 1, progress);
+    const visibility = fadeIn * fadeOut;
+
+    if (visibility <= 0) {
+      if (coreRef.current) coreRef.current.visible = false;
+      if (glowRef.current) glowRef.current.visible = false;
+      if (trailRef.current) trailRef.current.visible = false;
+      return;
+    }
+
+    const pulsePosition = asset.curve.getPointAt(progress);
+    const trailPosition = asset.curve.getPointAt(clamp(progress - PULSE_TRAIL_OFFSET, 0, 1));
+    const shimmer = 1 + Math.sin(clock.elapsedTime * 5.2 + asset.pulseDelay) * 0.08;
+
+    if (coreRef.current) {
+      coreRef.current.visible = true;
+      coreRef.current.position.copy(pulsePosition);
+      coreRef.current.scale.setScalar(baseScale * shimmer);
+    }
+
+    if (glowRef.current) {
+      glowRef.current.visible = true;
+      glowRef.current.position.copy(pulsePosition);
+      glowRef.current.scale.setScalar(baseScale * 2.7 * shimmer);
+    }
+
+    if (trailRef.current) {
+      trailRef.current.visible = true;
+      trailRef.current.position.copy(trailPosition);
+      trailRef.current.scale.setScalar(baseScale * 1.45 * visibility);
+    }
+  });
+
+  return (
+    <group>
+      <mesh ref={trailRef}>
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial
+          color="#6ad9ff"
+          transparent
+          opacity={0.18}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+      <mesh ref={glowRef}>
+        <sphereGeometry args={[1, 18, 18]} />
+        <meshBasicMaterial
+          color="#58d5ff"
+          transparent
+          opacity={0.2}
+          depthTest={false}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+      <mesh ref={coreRef}>
+        <sphereGeometry args={[1, 18, 18]} />
+        <meshBasicMaterial color="#d9fbff" transparent opacity={0.88} depthWrite={false} blending={AdditiveBlending} />
+      </mesh>
+    </group>
   );
+}
+
+function smoothstep(edge0: number, edge1: number, value: number) {
+  const x = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+function RouteArcLayer() {
+  const routeAssets = useMemo(() => GLOBAL_ROUTES.map(createRouteArcAsset), []);
 
   return (
     <group name="global-route-arc-layer">
-      {routeGeometries.map(({ route, geometry }) => (
+      {routeAssets.map(({ route, geometry }) => (
         <group key={route.id}>
           <mesh geometry={geometry}>
             <meshBasicMaterial
@@ -363,6 +470,9 @@ function RouteArcLayer() {
             />
           </mesh>
         </group>
+      ))}
+      {routeAssets.map((asset) => (
+        <RoutePulse key={`${asset.route.id}-pulse`} asset={asset} />
       ))}
     </group>
   );
