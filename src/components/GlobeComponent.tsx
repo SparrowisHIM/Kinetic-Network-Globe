@@ -1,5 +1,6 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
+import type { Group } from "three";
 
 function PlaceholderGlobe() {
   return (
@@ -23,7 +24,7 @@ function PlaceholderGlobe() {
 }
 
 function GlobeGroup() {
-  const globeRef = useRef(null);
+  const globeRef = useRef<Group>(null);
 
   useFrame((_, delta) => {
     if (!globeRef.current) return;

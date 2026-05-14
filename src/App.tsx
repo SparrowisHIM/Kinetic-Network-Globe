@@ -1,4 +1,4 @@
-import { GlobeComponent } from "./components/GlobeComponent.jsx";
+import { GlobeComponent } from "./components/GlobeComponent";
 
 export default function App() {
   return (
