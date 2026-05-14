@@ -21,7 +21,6 @@ const MAX_POINTER_DELTA_TIME = 80;
 const GLOBE_DOT_COUNT = 5200;
 const GLOBE_RADIUS = 1.62;
 const DOT_POINT_SIZE = 3.8;
-const BACKGROUND_PARTICLE_COUNT = 120;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -67,31 +66,6 @@ function createGlobeDotGeometry() {
     positions[positionIndex + 1] = y * GLOBE_RADIUS;
     positions[positionIndex + 2] = Math.sin(theta) * radiusAtY * GLOBE_RADIUS;
     seeds[index] = (index % 17) / 17;
-  }
-
-  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
-
-  return geometry;
-}
-
-function createBackgroundParticleGeometry() {
-  const geometry = new BufferGeometry();
-  const positions = new Float32Array(BACKGROUND_PARTICLE_COUNT * 3);
-  const seeds = new Float32Array(BACKGROUND_PARTICLE_COUNT);
-  let seed = 7;
-
-  function random() {
-    seed = (seed * 16807) % 2147483647;
-    return (seed - 1) / 2147483646;
-  }
-
-  for (let index = 0; index < BACKGROUND_PARTICLE_COUNT; index += 1) {
-    const positionIndex = index * 3;
-    positions[positionIndex] = (random() - 0.5) * 8.8;
-    positions[positionIndex + 1] = (random() - 0.5) * 5.6;
-    positions[positionIndex + 2] = -2.4 - random() * 2.2;
-    seeds[index] = random();
   }
 
   geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
@@ -146,43 +120,6 @@ function RimAtmosphere() {
         <meshBasicMaterial color="#2f9fff" transparent opacity={0.018} depthWrite={false} blending={AdditiveBlending} />
       </mesh>
     </group>
-  );
-}
-
-function BackgroundParticleField() {
-  const particleGeometry = useMemo(createBackgroundParticleGeometry, []);
-
-  return (
-    <points geometry={particleGeometry}>
-      <shaderMaterial
-        transparent
-        depthWrite={false}
-        blending={AdditiveBlending}
-        vertexShader={`
-          attribute float aSeed;
-          varying float vSeed;
-
-          void main() {
-            vSeed = aSeed;
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_Position = projectionMatrix * mvPosition;
-            gl_PointSize = mix(1.0, 2.2, aSeed) * (5.0 / -mvPosition.z);
-          }
-        `}
-        fragmentShader={`
-          precision highp float;
-
-          varying float vSeed;
-
-          void main() {
-            vec2 point = gl_PointCoord - vec2(0.5);
-            float mask = smoothstep(0.5, 0.05, length(point));
-            vec3 color = mix(vec3(0.18, 0.52, 0.78), vec3(0.75, 0.92, 1.0), vSeed);
-            gl_FragColor = vec4(color, mask * mix(0.04, 0.16, vSeed));
-          }
-        `}
-      />
-    </points>
   );
 }
 
@@ -402,7 +339,6 @@ function GlobeScene({ onDraggingChange }: GlobeGroupProps) {
       <directionalLight position={[4, 3, 5]} intensity={1.8} color="#8bc3ff" />
       <pointLight position={[-3, -1.5, 3]} intensity={2.1} color="#2b6dff" />
       <pointLight position={[0, 2.5, -4]} intensity={1} color="#2de8ff" />
-      <BackgroundParticleField />
       <GlobeGroup onDraggingChange={onDraggingChange} />
     </>
   );
