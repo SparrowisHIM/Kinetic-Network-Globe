@@ -771,6 +771,7 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
   const globeRef = useRef<Group>(null);
   const isDraggingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
+  const activePointerTargetRef = useRef<Element | null>(null);
   const previousPointerRef = useRef<PointerPosition | null>(null);
   const angularVelocityRef = useRef<AngularVelocity>({ x: 0, y: 0 });
   const interactionStateRef = useRef<InteractionState>("idle");
@@ -842,6 +843,12 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
   const stopDrag = useCallback(() => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
+    if (activePointerTargetRef.current && activePointerIdRef.current !== null) {
+      if (activePointerTargetRef.current.hasPointerCapture?.(activePointerIdRef.current)) {
+        activePointerTargetRef.current.releasePointerCapture?.(activePointerIdRef.current);
+      }
+    }
+    activePointerTargetRef.current = null;
     activePointerIdRef.current = null;
     previousPointerRef.current = null;
     onDraggingChange(false);
@@ -912,6 +919,8 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
 
       isDraggingRef.current = true;
       activePointerIdRef.current = event.pointerId;
+      activePointerTargetRef.current = event.nativeEvent.target as Element;
+      activePointerTargetRef.current.setPointerCapture?.(event.pointerId);
       angularVelocityRef.current = { x: 0, y: 0 };
       setInteractionState("dragging");
       previousPointerRef.current = {

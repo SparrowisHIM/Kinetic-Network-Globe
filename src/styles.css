@@ -24,6 +24,7 @@ body,
 
 body {
   overflow-x: hidden;
+  min-width: 320px;
 }
 
 .app-shell {
@@ -41,19 +42,19 @@ body {
   min-height: 100svh;
   place-items: center;
   overflow: hidden;
-  padding: clamp(2rem, 5vw, 5rem);
+  padding: clamp(1.4rem, 4vw, 4.5rem);
   isolation: isolate;
 }
 
 .globe-overlay {
   position: absolute;
-  inset: clamp(1rem, 3vw, 2.4rem);
+  inset: clamp(1rem, 2.8vw, 2.6rem);
   z-index: 3;
   display: grid;
-  grid-template-columns: minmax(0, 24rem) minmax(12rem, 18rem);
+  grid-template-columns: minmax(0, 24rem) minmax(12rem, 17rem);
   align-items: start;
   justify-content: space-between;
-  gap: 2rem;
+  gap: clamp(1rem, 4vw, 3rem);
   pointer-events: none;
 }
 
@@ -219,12 +220,13 @@ body {
 }
 
 .globe-stage {
-  width: min(82vw, 72svh, 760px);
+  width: min(84vw, 74svh, 820px);
+  max-width: calc(100vw - clamp(2rem, 8vw, 9rem));
   aspect-ratio: 1;
-  min-width: min(84vw, 320px);
   cursor: grab;
   touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .globe-section.is-dragging .globe-stage {
@@ -238,10 +240,54 @@ body {
   cursor: inherit;
 }
 
+@media (min-width: 1280px) and (min-height: 760px) {
+  .globe-stage {
+    width: min(78vw, 78svh, 880px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .globe-section {
+    min-height: 94svh;
+    padding: clamp(1.25rem, 3.5vw, 2.25rem);
+  }
+
+  .globe-overlay {
+    grid-template-columns: 1fr;
+    align-content: space-between;
+    gap: 1.25rem;
+  }
+
+  .globe-copy {
+    max-width: 21rem;
+  }
+
+  .globe-copy h1 {
+    max-width: 16rem;
+    font-size: clamp(2rem, 5.8vw, 3.5rem);
+  }
+
+  .globe-copy p {
+    max-width: 20rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .globe-stats {
+    align-self: end;
+    width: min(20rem, 42vw);
+  }
+
+  .globe-stage {
+    width: min(86vw, 62svh, 640px);
+    max-width: calc(100vw - 2.5rem);
+  }
+}
+
 @media (max-width: 640px) {
   .globe-section {
-    min-height: 86svh;
-    padding: 1.25rem;
+    min-height: 100svh;
+    padding: 1rem;
     align-content: center;
   }
 
@@ -301,6 +347,33 @@ body {
   }
 
   .globe-stage {
-    width: min(92vw, 64svh, 420px);
+    width: min(94vw, 54svh, 430px);
+    max-width: calc(100vw - 1.25rem);
+    min-width: 17.5rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .globe-copy {
+    max-width: 15.5rem;
+  }
+
+  .globe-copy h1 {
+    max-width: 12rem;
+    font-size: 1.95rem;
+  }
+
+  .globe-copy p {
+    max-width: 15.25rem;
+    font-size: 0.76rem;
+  }
+
+  .globe-status {
+    font-size: 0.58rem;
+  }
+
+  .globe-stage {
+    min-width: 0;
+    width: min(94vw, 50svh, 360px);
   }
 }
