@@ -1,6 +1,14 @@
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, BufferGeometry, Float32BufferAttribute, type Group } from "three";
+import {
+  AdditiveBlending,
+  BufferGeometry,
+  Float32BufferAttribute,
+  QuadraticBezierCurve3,
+  TubeGeometry,
+  Vector3,
+  type Group,
+} from "three";
 
 const IDLE_ROTATION_SPEED = 0.045;
 const GLOBE_DISPLAY_TILT = -0.18;
@@ -21,10 +29,99 @@ const MAX_POINTER_DELTA_TIME = 80;
 const GLOBE_DOT_COUNT = 5200;
 const GLOBE_RADIUS = 1.62;
 const DOT_POINT_SIZE = 3.8;
+const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
+const ROUTE_SEGMENTS = 96;
+const ROUTE_LONGITUDE_OFFSET = 90;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
 };
+
+type RouteStatus = "primary" | "active" | "quiet";
+
+type GlobeRoute = {
+  id: string;
+  startName: string;
+  endName: string;
+  startLat: number;
+  startLng: number;
+  endLat: number;
+  endLng: number;
+  status: RouteStatus;
+};
+
+const GLOBAL_ROUTES: GlobeRoute[] = [
+  {
+    id: "lagos-london",
+    startName: "Lagos",
+    endName: "London",
+    startLat: 6.5244,
+    startLng: 3.3792,
+    endLat: 51.5072,
+    endLng: -0.1276,
+    status: "primary",
+  },
+  {
+    id: "london-new-york",
+    startName: "London",
+    endName: "New York",
+    startLat: 51.5072,
+    startLng: -0.1276,
+    endLat: 40.7128,
+    endLng: -74.006,
+    status: "active",
+  },
+  {
+    id: "new-york-dubai",
+    startName: "New York",
+    endName: "Dubai",
+    startLat: 40.7128,
+    startLng: -74.006,
+    endLat: 25.2048,
+    endLng: 55.2708,
+    status: "quiet",
+  },
+  {
+    id: "dubai-singapore",
+    startName: "Dubai",
+    endName: "Singapore",
+    startLat: 25.2048,
+    startLng: 55.2708,
+    endLat: 1.3521,
+    endLng: 103.8198,
+    status: "primary",
+  },
+  {
+    id: "singapore-tokyo",
+    startName: "Singapore",
+    endName: "Tokyo",
+    startLat: 1.3521,
+    startLng: 103.8198,
+    endLat: 35.6762,
+    endLng: 139.6503,
+    status: "active",
+  },
+  {
+    id: "frankfurt-cape-town",
+    startName: "Frankfurt",
+    endName: "Cape Town",
+    startLat: 50.1109,
+    startLng: 8.6821,
+    endLat: -33.9249,
+    endLng: 18.4241,
+    status: "quiet",
+  },
+  {
+    id: "cape-town-lagos",
+    startName: "Cape Town",
+    endName: "Lagos",
+    startLat: -33.9249,
+    startLng: 18.4241,
+    endLat: 6.5244,
+    endLng: 3.3792,
+    status: "active",
+  },
+];
 
 type PointerPosition = {
   x: number;
@@ -48,6 +145,40 @@ function dampVelocity(velocity: number, friction: number, delta: number) {
 function getIdleBlend(horizontalVelocity: number) {
   const momentumWeight = clamp(Math.abs(horizontalVelocity) / IDLE_BLEND_START_VELOCITY, 0, 1);
   return 1 - momentumWeight;
+}
+
+function latLngToSpherePosition(latitude: number, longitude: number, radius = ROUTE_RADIUS) {
+  const phi = ((90 - latitude) * Math.PI) / 180;
+  const theta = ((longitude + ROUTE_LONGITUDE_OFFSET) * Math.PI) / 180;
+  const x = -radius * Math.sin(phi) * Math.cos(theta);
+  const y = radius * Math.cos(phi);
+  const z = radius * Math.sin(phi) * Math.sin(theta);
+
+  return new Vector3(x, y, z);
+}
+
+function createRouteArcGeometry(route: GlobeRoute) {
+  const start = latLngToSpherePosition(route.startLat, route.startLng);
+  const end = latLngToSpherePosition(route.endLat, route.endLng);
+  const angle = start.angleTo(end);
+  const lift = clamp(0.14 + angle * 0.12, 0.18, 0.42);
+  const middle = start.clone().add(end).normalize().multiplyScalar(ROUTE_RADIUS + lift);
+  const curve = new QuadraticBezierCurve3(start, middle, end);
+  const tubeRadius = route.status === "primary" ? 0.009 : route.status === "active" ? 0.007 : 0.005;
+
+  return new TubeGeometry(curve, ROUTE_SEGMENTS, tubeRadius, 8, false);
+}
+
+function getRouteOpacity(status: RouteStatus) {
+  if (status === "primary") return 0.58;
+  if (status === "active") return 0.42;
+  return 0.26;
+}
+
+function getRouteGlowOpacity(status: RouteStatus) {
+  if (status === "primary") return 0.18;
+  if (status === "active") return 0.13;
+  return 0.09;
 }
 
 function createGlobeDotGeometry() {
@@ -197,6 +328,46 @@ function DigitalGlobeSurface() {
   );
 }
 
+function RouteArcLayer() {
+  const routeGeometries = useMemo(
+    () =>
+      GLOBAL_ROUTES.map((route) => ({
+        route,
+        geometry: createRouteArcGeometry(route),
+      })),
+    [],
+  );
+
+  return (
+    <group name="global-route-arc-layer">
+      {routeGeometries.map(({ route, geometry }) => (
+        <group key={route.id}>
+          <mesh geometry={geometry}>
+            <meshBasicMaterial
+              color="#4ebfff"
+              transparent
+              opacity={getRouteGlowOpacity(route.status)}
+              depthTest={false}
+              depthWrite={false}
+              blending={AdditiveBlending}
+            />
+          </mesh>
+          <mesh geometry={geometry}>
+            <meshBasicMaterial
+              color={route.status === "primary" ? "#b8f3ff" : "#5fc8ff"}
+              transparent
+              opacity={getRouteOpacity(route.status)}
+              depthTest
+              depthWrite={false}
+              blending={AdditiveBlending}
+            />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
   const globeRef = useRef<Group>(null);
   const isDraggingRef = useRef(false);
@@ -328,6 +499,7 @@ function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
       onPointerDown={handlePointerDown}
     >
       <DigitalGlobeSurface />
+      <RouteArcLayer />
     </group>
   );
 }
