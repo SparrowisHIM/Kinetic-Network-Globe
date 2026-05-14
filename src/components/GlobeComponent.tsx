@@ -8,6 +8,16 @@ const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
 const VERTICAL_DRAG_SENSITIVITY = 0.003;
 const MIN_VERTICAL_ROTATION = -0.72;
 const MAX_VERTICAL_ROTATION = 0.48;
+const MAX_HORIZONTAL_VELOCITY = 3.2;
+const MAX_VERTICAL_VELOCITY = 1.25;
+const VELOCITY_SMOOTHING = 0.35;
+const MOMENTUM_FRICTION = 0.92;
+const VERTICAL_MOMENTUM_FRICTION = 0.86;
+const MOMENTUM_EPSILON = 0.0025;
+const IDLE_BLEND_START_VELOCITY = 0.16;
+const MAX_POINTER_DELTA = 80;
+const MIN_POINTER_DELTA_TIME = 16;
+const MAX_POINTER_DELTA_TIME = 80;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -16,10 +26,25 @@ type GlobeGroupProps = {
 type PointerPosition = {
   x: number;
   y: number;
+  time: number;
+};
+
+type AngularVelocity = {
+  x: number;
+  y: number;
 };
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function dampVelocity(velocity: number, friction: number, delta: number) {
+  return velocity * Math.pow(friction, delta * 60);
+}
+
+function getIdleBlend(horizontalVelocity: number) {
+  const momentumWeight = clamp(Math.abs(horizontalVelocity) / IDLE_BLEND_START_VELOCITY, 0, 1);
+  return 1 - momentumWeight;
 }
 
 function PlaceholderGlobe() {
@@ -48,11 +73,38 @@ function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
   const isDraggingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
   const previousPointerRef = useRef<PointerPosition | null>(null);
+  const angularVelocityRef = useRef<AngularVelocity>({ x: 0, y: 0 });
 
   useFrame((_, delta) => {
     if (!globeRef.current) return;
     if (isDraggingRef.current) return;
-    globeRef.current.rotation.y += delta * IDLE_ROTATION_SPEED;
+
+    const velocity = angularVelocityRef.current;
+    const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON || Math.abs(velocity.x) > MOMENTUM_EPSILON;
+
+    if (hasMomentum) {
+      globeRef.current.rotation.y += velocity.y * delta;
+      globeRef.current.rotation.x = clamp(
+        globeRef.current.rotation.x + velocity.x * delta,
+        MIN_VERTICAL_ROTATION,
+        MAX_VERTICAL_ROTATION,
+      );
+
+      if (
+        globeRef.current.rotation.x === MIN_VERTICAL_ROTATION ||
+        globeRef.current.rotation.x === MAX_VERTICAL_ROTATION
+      ) {
+        velocity.x = 0;
+      }
+
+      velocity.y = dampVelocity(velocity.y, MOMENTUM_FRICTION, delta);
+      velocity.x = dampVelocity(velocity.x, VERTICAL_MOMENTUM_FRICTION, delta);
+    } else {
+      velocity.y = 0;
+      velocity.x = 0;
+    }
+
+    globeRef.current.rotation.y += delta * IDLE_ROTATION_SPEED * getIdleBlend(velocity.y);
   });
 
   const stopDrag = useCallback(() => {
@@ -73,17 +125,40 @@ function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
 
       const deltaX = event.clientX - previousPointerRef.current.x;
       const deltaY = event.clientY - previousPointerRef.current.y;
+      const deltaTime = clamp(
+        event.timeStamp - previousPointerRef.current.time,
+        MIN_POINTER_DELTA_TIME,
+        MAX_POINTER_DELTA_TIME,
+      );
+      const clampedDeltaX = clamp(deltaX, -MAX_POINTER_DELTA, MAX_POINTER_DELTA);
+      const clampedDeltaY = clamp(deltaY, -MAX_POINTER_DELTA, MAX_POINTER_DELTA);
 
-      globeRef.current.rotation.y += deltaX * HORIZONTAL_DRAG_SENSITIVITY;
+      globeRef.current.rotation.y += clampedDeltaX * HORIZONTAL_DRAG_SENSITIVITY;
       globeRef.current.rotation.x = clamp(
-        globeRef.current.rotation.x + deltaY * VERTICAL_DRAG_SENSITIVITY,
+        globeRef.current.rotation.x + clampedDeltaY * VERTICAL_DRAG_SENSITIVITY,
         MIN_VERTICAL_ROTATION,
         MAX_VERTICAL_ROTATION,
       );
 
+      const velocityScale = 1000 / deltaTime;
+      const nextVelocityY = clamp(
+        clampedDeltaX * HORIZONTAL_DRAG_SENSITIVITY * velocityScale,
+        -MAX_HORIZONTAL_VELOCITY,
+        MAX_HORIZONTAL_VELOCITY,
+      );
+      const nextVelocityX = clamp(
+        clampedDeltaY * VERTICAL_DRAG_SENSITIVITY * velocityScale,
+        -MAX_VERTICAL_VELOCITY,
+        MAX_VERTICAL_VELOCITY,
+      );
+
+      angularVelocityRef.current.y += (nextVelocityY - angularVelocityRef.current.y) * VELOCITY_SMOOTHING;
+      angularVelocityRef.current.x += (nextVelocityX - angularVelocityRef.current.x) * VELOCITY_SMOOTHING;
+
       previousPointerRef.current = {
         x: event.clientX,
         y: event.clientY,
+        time: event.timeStamp,
       };
     }
 
@@ -105,9 +180,11 @@ function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
 
       isDraggingRef.current = true;
       activePointerIdRef.current = event.pointerId;
+      angularVelocityRef.current = { x: 0, y: 0 };
       previousPointerRef.current = {
         x: event.clientX,
         y: event.clientY,
+        time: event.nativeEvent.timeStamp,
       };
       onDraggingChange(true);
     },
