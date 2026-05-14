@@ -7,7 +7,7 @@ import {
   type Mesh,
   type MeshBasicMaterial,
   QuadraticBezierCurve3,
-  type ShaderMaterial,
+  SphereGeometry,
   TubeGeometry,
   Vector3,
   type Group,
@@ -29,17 +29,22 @@ const IDLE_BLEND_START_VELOCITY = 0.16;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
-const GLOBE_DOT_COUNT = 5200;
+const DESKTOP_GLOBE_DOT_COUNT = 5200;
+const COMPACT_GLOBE_DOT_COUNT = 3800;
 const GLOBE_RADIUS = 1.62;
 const DOT_POINT_SIZE = 3.8;
 const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
-const ROUTE_SEGMENTS = 96;
+const DESKTOP_ROUTE_SEGMENTS = 96;
+const COMPACT_ROUTE_SEGMENTS = 72;
 const ROUTE_LONGITUDE_OFFSET = 90;
 const PULSE_LOOP_GAP = 0.48;
 const PULSE_TRAIL_OFFSET = 0.055;
 const NODE_RADIUS = ROUTE_RADIUS;
 const NODE_RIPPLE_DURATION = 2.8;
 const INTERACTION_ENERGY_EASING = 5.8;
+const REDUCED_MOTION_IDLE_SPEED = 0.008;
+const REDUCED_MOTION_PULSE_SPEED_MULTIPLIER = 1.85;
+const COMPACT_MEDIA_QUERY = "(max-width: 640px), (max-height: 620px)";
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -49,6 +54,8 @@ type InteractionState = "idle" | "dragging" | "momentum" | "settling";
 
 type GlobeSceneProps = GlobeGroupProps & {
   onInteractionStateChange: (interactionState: InteractionState) => void;
+  prefersReducedMotion: boolean;
+  isCompactViewport: boolean;
 };
 
 type InteractionEnergyRef = MutableRefObject<number>;
@@ -72,6 +79,18 @@ type RouteArcAsset = {
   geometry: TubeGeometry;
   pulseDuration: number;
   pulseDelay: number;
+};
+
+type PulseGeometries = {
+  trail: SphereGeometry;
+  glow: SphereGeometry;
+  core: SphereGeometry;
+};
+
+type NodeGeometries = {
+  ripple: SphereGeometry;
+  glow: SphereGeometry;
+  core: SphereGeometry;
 };
 
 type NetworkNode = {
@@ -210,19 +229,19 @@ function createRouteCurve(route: GlobeRoute) {
   return new QuadraticBezierCurve3(start, middle, end);
 }
 
-function createRouteArcGeometry(route: GlobeRoute, curve: QuadraticBezierCurve3) {
+function createRouteArcGeometry(route: GlobeRoute, curve: QuadraticBezierCurve3, routeSegments: number) {
   const tubeRadius = route.status === "primary" ? 0.009 : route.status === "active" ? 0.007 : 0.005;
 
-  return new TubeGeometry(curve, ROUTE_SEGMENTS, tubeRadius, 8, false);
+  return new TubeGeometry(curve, routeSegments, tubeRadius, 8, false);
 }
 
-function createRouteArcAsset(route: GlobeRoute, index: number): RouteArcAsset {
+function createRouteArcAsset(route: GlobeRoute, index: number, routeSegments: number): RouteArcAsset {
   const curve = createRouteCurve(route);
 
   return {
     route,
     curve,
-    geometry: createRouteArcGeometry(route, curve),
+    geometry: createRouteArcGeometry(route, curve, routeSegments),
     pulseDuration: route.status === "primary" ? 3.6 + index * 0.08 : route.status === "active" ? 4.25 : 5.15,
     pulseDelay: index * 0.43 + (route.status === "quiet" ? 0.7 : 0),
   };
@@ -316,14 +335,14 @@ function getMomentumEnergy(velocity: AngularVelocity) {
   return clamp(velocityStrength * 1.35, 0, 0.72);
 }
 
-function createGlobeDotGeometry() {
+function createGlobeDotGeometry(dotCount: number) {
   const geometry = new BufferGeometry();
-  const positions = new Float32Array(GLOBE_DOT_COUNT * 3);
-  const seeds = new Float32Array(GLOBE_DOT_COUNT);
+  const positions = new Float32Array(dotCount * 3);
+  const seeds = new Float32Array(dotCount);
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
-  for (let index = 0; index < GLOBE_DOT_COUNT; index += 1) {
-    const y = 1 - (index / (GLOBE_DOT_COUNT - 1)) * 2;
+  for (let index = 0; index < dotCount; index += 1) {
+    const y = 1 - (index / (dotCount - 1)) * 2;
     const radiusAtY = Math.sqrt(1 - y * y);
     const theta = index * goldenAngle;
     const positionIndex = index * 3;
@@ -340,8 +359,32 @@ function createGlobeDotGeometry() {
   return geometry;
 }
 
-function RimAtmosphere({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
-  const rimMaterialRef = useRef<ShaderMaterial>(null);
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
+  });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const handleChange = () => setMatches(mediaQuery.matches);
+
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [query]);
+
+  return matches;
+}
+
+function RimAtmosphere({
+  interactionEnergyRef,
+  prefersReducedMotion,
+}: {
+  interactionEnergyRef: InteractionEnergyRef;
+  prefersReducedMotion: boolean;
+}) {
   const shellMaterialRef = useRef<MeshBasicMaterial>(null);
   const rimUniforms = useMemo(
     () => ({
@@ -352,7 +395,7 @@ function RimAtmosphere({ interactionEnergyRef }: { interactionEnergyRef: Interac
   );
 
   useFrame(() => {
-    const energy = interactionEnergyRef.current;
+    const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
     rimUniforms.uEnergy.value = energy;
 
     if (shellMaterialRef.current) {
@@ -365,7 +408,6 @@ function RimAtmosphere({ interactionEnergyRef }: { interactionEnergyRef: Interac
       <mesh>
         <sphereGeometry args={[1.76, 128, 128]} />
         <shaderMaterial
-          ref={rimMaterialRef}
           transparent
           depthWrite={false}
           blending={AdditiveBlending}
@@ -410,8 +452,16 @@ function RimAtmosphere({ interactionEnergyRef }: { interactionEnergyRef: Interac
   );
 }
 
-function DigitalGlobeSurface({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
-  const dotGeometry = useMemo(createGlobeDotGeometry, []);
+function DigitalGlobeSurface({
+  interactionEnergyRef,
+  prefersReducedMotion,
+  dotCount,
+}: {
+  interactionEnergyRef: InteractionEnergyRef;
+  prefersReducedMotion: boolean;
+  dotCount: number;
+}) {
+  const dotGeometry = useMemo(() => createGlobeDotGeometry(dotCount), [dotCount]);
   const dotUniforms = useMemo(
     () => ({
       uPointSize: { value: DOT_POINT_SIZE },
@@ -423,8 +473,10 @@ function DigitalGlobeSurface({ interactionEnergyRef }: { interactionEnergyRef: I
   );
   const innerShellRef = useRef<MeshBasicMaterial>(null);
 
+  useEffect(() => () => dotGeometry.dispose(), [dotGeometry]);
+
   useFrame(() => {
-    const energy = interactionEnergyRef.current;
+    const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
     dotUniforms.uEnergy.value = energy;
 
     if (innerShellRef.current) {
@@ -491,12 +543,22 @@ function DigitalGlobeSurface({ interactionEnergyRef }: { interactionEnergyRef: I
         <meshBasicMaterial ref={innerShellRef} color="#1f8fff" transparent opacity={0.06} depthWrite={false} />
       </mesh>
 
-      <RimAtmosphere interactionEnergyRef={interactionEnergyRef} />
+      <RimAtmosphere interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
     </group>
   );
 }
 
-function RoutePulse({ asset, interactionEnergyRef }: { asset: RouteArcAsset; interactionEnergyRef: InteractionEnergyRef }) {
+function RoutePulse({
+  asset,
+  interactionEnergyRef,
+  pulseGeometries,
+  prefersReducedMotion,
+}: {
+  asset: RouteArcAsset;
+  interactionEnergyRef: InteractionEnergyRef;
+  pulseGeometries: PulseGeometries;
+  prefersReducedMotion: boolean;
+}) {
   const coreRef = useRef<Mesh>(null);
   const glowRef = useRef<Mesh>(null);
   const trailRef = useRef<Mesh>(null);
@@ -506,10 +568,12 @@ function RoutePulse({ asset, interactionEnergyRef }: { asset: RouteArcAsset; int
   const baseScale = getPulseScale(asset.route.status);
 
   useFrame(({ clock }) => {
-    const energy = interactionEnergyRef.current;
-    const loopDuration = asset.pulseDuration + PULSE_LOOP_GAP;
+    const motionMultiplier = prefersReducedMotion ? REDUCED_MOTION_PULSE_SPEED_MULTIPLIER : 1;
+    const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
+    const pulseDuration = asset.pulseDuration * motionMultiplier;
+    const loopDuration = pulseDuration + PULSE_LOOP_GAP * motionMultiplier;
     const loopTime = (clock.elapsedTime + asset.pulseDelay) % loopDuration;
-    const progress = clamp(loopTime / asset.pulseDuration, 0, 1);
+    const progress = clamp(loopTime / pulseDuration, 0, 1);
     const fadeIn = smoothstep(0, 0.09, progress);
     const fadeOut = 1 - smoothstep(0.84, 1, progress);
     const visibility = fadeIn * fadeOut;
@@ -550,8 +614,7 @@ function RoutePulse({ asset, interactionEnergyRef }: { asset: RouteArcAsset; int
 
   return (
     <group>
-      <mesh ref={trailRef}>
-        <sphereGeometry args={[1, 16, 16]} />
+      <mesh ref={trailRef} geometry={pulseGeometries.trail}>
         <meshBasicMaterial
           ref={trailMaterialRef}
           color="#6ad9ff"
@@ -562,8 +625,7 @@ function RoutePulse({ asset, interactionEnergyRef }: { asset: RouteArcAsset; int
           blending={AdditiveBlending}
         />
       </mesh>
-      <mesh ref={glowRef}>
-        <sphereGeometry args={[1, 18, 18]} />
+      <mesh ref={glowRef} geometry={pulseGeometries.glow}>
         <meshBasicMaterial
           ref={glowMaterialRef}
           color="#58d5ff"
@@ -574,8 +636,7 @@ function RoutePulse({ asset, interactionEnergyRef }: { asset: RouteArcAsset; int
           blending={AdditiveBlending}
         />
       </mesh>
-      <mesh ref={coreRef}>
-        <sphereGeometry args={[1, 18, 18]} />
+      <mesh ref={coreRef} geometry={pulseGeometries.core}>
         <meshBasicMaterial
           ref={coreMaterialRef}
           color="#d9fbff"
@@ -593,10 +654,14 @@ function NetworkNodeMarker({
   node,
   index,
   interactionEnergyRef,
+  nodeGeometries,
+  prefersReducedMotion,
 }: {
   node: NetworkNode;
   index: number;
   interactionEnergyRef: InteractionEnergyRef;
+  nodeGeometries: NodeGeometries;
+  prefersReducedMotion: boolean;
 }) {
   const coreRef = useRef<Mesh>(null);
   const glowRef = useRef<Mesh>(null);
@@ -608,11 +673,12 @@ function NetworkNodeMarker({
   const rippleOpacity = getNodeRippleOpacity(node.status);
 
   useFrame(({ clock }) => {
-    const energy = interactionEnergyRef.current;
+    const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
     const rippleTime = (clock.elapsedTime + index * 0.36) % NODE_RIPPLE_DURATION;
     const rippleProgress = rippleTime / NODE_RIPPLE_DURATION;
-    const rippleFade = (1 - smoothstep(0.32, 1, rippleProgress)) * smoothstep(0, 0.12, rippleProgress);
-    const breathing = 1 + Math.sin(clock.elapsedTime * 1.7 + index) * 0.045;
+    const rippleFade =
+      (1 - smoothstep(0.32, 1, rippleProgress)) * smoothstep(0, 0.12, rippleProgress) * (prefersReducedMotion ? 0.35 : 1);
+    const breathing = prefersReducedMotion ? 1 : 1 + Math.sin(clock.elapsedTime * 1.7 + index) * 0.045;
 
     if (coreRef.current) {
       coreRef.current.scale.setScalar(baseScale * breathing * (1 + energy * 0.1));
@@ -642,8 +708,7 @@ function NetworkNodeMarker({
 
   return (
     <group position={position}>
-      <mesh ref={rippleRef}>
-        <sphereGeometry args={[1, 24, 24]} />
+      <mesh ref={rippleRef} geometry={nodeGeometries.ripple}>
         <meshBasicMaterial
           color="#7ee4ff"
           transparent
@@ -654,8 +719,7 @@ function NetworkNodeMarker({
           wireframe
         />
       </mesh>
-      <mesh ref={glowRef}>
-        <sphereGeometry args={[1, 20, 20]} />
+      <mesh ref={glowRef} geometry={nodeGeometries.glow}>
         <meshBasicMaterial
           ref={glowMaterialRef}
           color="#3fc4ff"
@@ -666,8 +730,7 @@ function NetworkNodeMarker({
           blending={AdditiveBlending}
         />
       </mesh>
-      <mesh ref={coreRef}>
-        <sphereGeometry args={[1, 20, 20]} />
+      <mesh ref={coreRef} geometry={nodeGeometries.core}>
         <meshBasicMaterial
           ref={coreMaterialRef}
           color={node.status === "quiet" ? "#8adfff" : "#e2fbff"}
@@ -682,13 +745,43 @@ function NetworkNodeMarker({
   );
 }
 
-function NetworkNodeLayer({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
+function NetworkNodeLayer({
+  interactionEnergyRef,
+  prefersReducedMotion,
+}: {
+  interactionEnergyRef: InteractionEnergyRef;
+  prefersReducedMotion: boolean;
+}) {
   const nodes = useMemo(() => extractNetworkNodes(GLOBAL_ROUTES), []);
+  const nodeGeometries = useMemo(
+    () => ({
+      ripple: new SphereGeometry(1, 18, 18),
+      glow: new SphereGeometry(1, 16, 16),
+      core: new SphereGeometry(1, 16, 16),
+    }),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      nodeGeometries.ripple.dispose();
+      nodeGeometries.glow.dispose();
+      nodeGeometries.core.dispose();
+    },
+    [nodeGeometries],
+  );
 
   return (
     <group name="global-network-node-layer">
       {nodes.map((node, index) => (
-        <NetworkNodeMarker key={node.id} node={node} index={index} interactionEnergyRef={interactionEnergyRef} />
+        <NetworkNodeMarker
+          key={node.id}
+          node={node}
+          index={index}
+          interactionEnergyRef={interactionEnergyRef}
+          nodeGeometries={nodeGeometries}
+          prefersReducedMotion={prefersReducedMotion}
+        />
       ))}
     </group>
   );
@@ -703,16 +796,18 @@ function RouteArcLine({
   route,
   geometry,
   interactionEnergyRef,
+  prefersReducedMotion,
 }: {
   route: GlobeRoute;
   geometry: TubeGeometry;
   interactionEnergyRef: InteractionEnergyRef;
+  prefersReducedMotion: boolean;
 }) {
   const glowMaterialRef = useRef<MeshBasicMaterial>(null);
   const coreMaterialRef = useRef<MeshBasicMaterial>(null);
 
   useFrame(() => {
-    const energy = interactionEnergyRef.current;
+    const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
 
     if (glowMaterialRef.current) {
       glowMaterialRef.current.opacity = getRouteGlowOpacity(route.status) * (1 + energy * 0.9);
@@ -751,23 +846,75 @@ function RouteArcLine({
   );
 }
 
-function RouteArcLayer({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
-  const routeAssets = useMemo(() => GLOBAL_ROUTES.map(createRouteArcAsset), []);
+function RouteArcLayer({
+  interactionEnergyRef,
+  prefersReducedMotion,
+  routeSegments,
+}: {
+  interactionEnergyRef: InteractionEnergyRef;
+  prefersReducedMotion: boolean;
+  routeSegments: number;
+}) {
+  const routeAssets = useMemo(
+    () => GLOBAL_ROUTES.map((route, index) => createRouteArcAsset(route, index, routeSegments)),
+    [routeSegments],
+  );
+  const pulseGeometries = useMemo(
+    () => ({
+      trail: new SphereGeometry(1, 12, 12),
+      glow: new SphereGeometry(1, 14, 14),
+      core: new SphereGeometry(1, 14, 14),
+    }),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      routeAssets.forEach((asset) => asset.geometry.dispose());
+    },
+    [routeAssets],
+  );
+
+  useEffect(
+    () => () => {
+      pulseGeometries.trail.dispose();
+      pulseGeometries.glow.dispose();
+      pulseGeometries.core.dispose();
+    },
+    [pulseGeometries],
+  );
 
   return (
     <group name="global-route-arc-layer">
       {routeAssets.map(({ route, geometry }) => (
-        <RouteArcLine key={route.id} route={route} geometry={geometry} interactionEnergyRef={interactionEnergyRef} />
+        <RouteArcLine
+          key={route.id}
+          route={route}
+          geometry={geometry}
+          interactionEnergyRef={interactionEnergyRef}
+          prefersReducedMotion={prefersReducedMotion}
+        />
       ))}
       {routeAssets.map((asset) => (
-        <RoutePulse key={`${asset.route.id}-pulse`} asset={asset} interactionEnergyRef={interactionEnergyRef} />
+        <RoutePulse
+          key={`${asset.route.id}-pulse`}
+          asset={asset}
+          interactionEnergyRef={interactionEnergyRef}
+          pulseGeometries={pulseGeometries}
+          prefersReducedMotion={prefersReducedMotion}
+        />
       ))}
-      <NetworkNodeLayer interactionEnergyRef={interactionEnergyRef} />
+      <NetworkNodeLayer interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
     </group>
   );
 }
 
-function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeSceneProps) {
+function GlobeGroup({
+  onDraggingChange,
+  onInteractionStateChange,
+  prefersReducedMotion,
+  isCompactViewport,
+}: GlobeSceneProps) {
   const globeRef = useRef<Group>(null);
   const isDraggingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
@@ -793,13 +940,14 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
   useFrame((_, delta) => {
     if (!globeRef.current) return;
     if (isDraggingRef.current) {
-      interactionEnergyRef.current = dampValue(interactionEnergyRef.current, 1, INTERACTION_ENERGY_EASING, delta);
+      const dragEnergy = prefersReducedMotion ? 0.42 : 1;
+      interactionEnergyRef.current = dampValue(interactionEnergyRef.current, dragEnergy, INTERACTION_ENERGY_EASING, delta);
       return;
     }
 
     const velocity = angularVelocityRef.current;
     const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON || Math.abs(velocity.x) > MOMENTUM_EPSILON;
-    const targetEnergy = hasMomentum ? getMomentumEnergy(velocity) : 0;
+    const targetEnergy = hasMomentum ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1) : 0;
     interactionEnergyRef.current = dampValue(
       interactionEnergyRef.current,
       targetEnergy,
@@ -837,7 +985,8 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
       velocity.x = 0;
     }
 
-    globeRef.current.rotation.y += delta * IDLE_ROTATION_SPEED * getIdleBlend(velocity.y);
+    const idleSpeed = prefersReducedMotion ? REDUCED_MOTION_IDLE_SPEED : IDLE_ROTATION_SPEED;
+    globeRef.current.rotation.y += delta * idleSpeed * getIdleBlend(velocity.y);
   });
 
   const stopDrag = useCallback(() => {
@@ -882,13 +1031,13 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
       const velocityScale = 1000 / deltaTime;
       const nextVelocityY = clamp(
         clampedDeltaX * HORIZONTAL_DRAG_SENSITIVITY * velocityScale,
-        -MAX_HORIZONTAL_VELOCITY,
-        MAX_HORIZONTAL_VELOCITY,
+        -MAX_HORIZONTAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
+        MAX_HORIZONTAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
       );
       const nextVelocityX = clamp(
         clampedDeltaY * VERTICAL_DRAG_SENSITIVITY * velocityScale,
-        -MAX_VERTICAL_VELOCITY,
-        MAX_VERTICAL_VELOCITY,
+        -MAX_VERTICAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
+        MAX_VERTICAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
       );
 
       angularVelocityRef.current.y += (nextVelocityY - angularVelocityRef.current.y) * VELOCITY_SMOOTHING;
@@ -910,7 +1059,7 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
       window.removeEventListener("pointerup", stopDrag);
       window.removeEventListener("pointercancel", stopDrag);
     };
-  }, [stopDrag]);
+  }, [prefersReducedMotion, stopDrag]);
 
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
@@ -940,20 +1089,38 @@ function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
       rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
       onPointerDown={handlePointerDown}
     >
-      <DigitalGlobeSurface interactionEnergyRef={interactionEnergyRef} />
-      <RouteArcLayer interactionEnergyRef={interactionEnergyRef} />
+      <DigitalGlobeSurface
+        interactionEnergyRef={interactionEnergyRef}
+        prefersReducedMotion={prefersReducedMotion}
+        dotCount={isCompactViewport ? COMPACT_GLOBE_DOT_COUNT : DESKTOP_GLOBE_DOT_COUNT}
+      />
+      <RouteArcLayer
+        interactionEnergyRef={interactionEnergyRef}
+        prefersReducedMotion={prefersReducedMotion}
+        routeSegments={isCompactViewport ? COMPACT_ROUTE_SEGMENTS : DESKTOP_ROUTE_SEGMENTS}
+      />
     </group>
   );
 }
 
-function GlobeScene({ onDraggingChange, onInteractionStateChange }: GlobeSceneProps) {
+function GlobeScene({
+  onDraggingChange,
+  onInteractionStateChange,
+  prefersReducedMotion,
+  isCompactViewport,
+}: GlobeSceneProps) {
   return (
     <>
       <ambientLight intensity={0.42} />
       <directionalLight position={[4, 3, 5]} intensity={1.8} color="#8bc3ff" />
       <pointLight position={[-3, -1.5, 3]} intensity={2.1} color="#2b6dff" />
       <pointLight position={[0, 2.5, -4]} intensity={1} color="#2de8ff" />
-      <GlobeGroup onDraggingChange={onDraggingChange} onInteractionStateChange={onInteractionStateChange} />
+      <GlobeGroup
+        onDraggingChange={onDraggingChange}
+        onInteractionStateChange={onInteractionStateChange}
+        prefersReducedMotion={prefersReducedMotion}
+        isCompactViewport={isCompactViewport}
+      />
     </>
   );
 }
@@ -961,21 +1128,30 @@ function GlobeScene({ onDraggingChange, onInteractionStateChange }: GlobeScenePr
 export function GlobeComponent() {
   const [isDragging, setIsDragging] = useState(false);
   const [interactionState, setInteractionState] = useState<InteractionState>("idle");
+  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const isCompactViewport = useMediaQuery(COMPACT_MEDIA_QUERY);
+  const canvasDpr = useMemo<[number, number]>(
+    () => (prefersReducedMotion || isCompactViewport ? [1, 1.3] : [1, 1.75]),
+    [isCompactViewport, prefersReducedMotion],
+  );
 
   return (
     <section
       className={`globe-section is-${interactionState}${isDragging ? " is-dragging" : ""}`}
-      aria-label="Kinetic network globe"
+      aria-labelledby="globe-title"
+      aria-describedby="globe-description"
     >
       <div className="globe-ambient" aria-hidden="true" />
-      <div className="globe-overlay" aria-hidden="true">
+      <div className="globe-overlay">
         <div className="globe-copy">
           <div className="globe-status">
             <span className="globe-status-dot" />
             Live network simulation
           </div>
-          <h1>Kinetic Network Globe</h1>
-          <p>A real-time orbital interface for visualizing global movement, signals, and connected systems.</p>
+          <h1 id="globe-title">Kinetic Network Globe</h1>
+          <p id="globe-description">
+            A real-time orbital interface for visualizing global movement, signals, and connected systems.
+          </p>
         </div>
 
         <div className="globe-stats">
@@ -995,10 +1171,15 @@ export function GlobeComponent() {
         <Canvas
           className="globe-canvas"
           camera={{ position: [0, 0, 5.2], fov: 42 }}
-          dpr={[1, 1.75]}
+          dpr={canvasDpr}
           gl={{ antialias: true, alpha: true }}
         >
-          <GlobeScene onDraggingChange={setIsDragging} onInteractionStateChange={setInteractionState} />
+          <GlobeScene
+            onDraggingChange={setIsDragging}
+            onInteractionStateChange={setInteractionState}
+            prefersReducedMotion={prefersReducedMotion}
+            isCompactViewport={isCompactViewport}
+          />
         </Canvas>
       </div>
     </section>
