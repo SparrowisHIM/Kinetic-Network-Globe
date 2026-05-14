@@ -1,6 +1,6 @@
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Group } from "three";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdditiveBlending, BufferGeometry, Float32BufferAttribute, type Group } from "three";
 
 const IDLE_ROTATION_SPEED = 0.045;
 const GLOBE_DISPLAY_TILT = -0.18;
@@ -18,6 +18,9 @@ const IDLE_BLEND_START_VELOCITY = 0.16;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
+const GLOBE_DOT_COUNT = 5200;
+const GLOBE_RADIUS = 1.62;
+const DOT_POINT_SIZE = 3.8;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -47,22 +50,97 @@ function getIdleBlend(horizontalVelocity: number) {
   return 1 - momentumWeight;
 }
 
-function PlaceholderGlobe() {
+function createGlobeDotGeometry() {
+  const geometry = new BufferGeometry();
+  const positions = new Float32Array(GLOBE_DOT_COUNT * 3);
+  const seeds = new Float32Array(GLOBE_DOT_COUNT);
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+  for (let index = 0; index < GLOBE_DOT_COUNT; index += 1) {
+    const y = 1 - (index / (GLOBE_DOT_COUNT - 1)) * 2;
+    const radiusAtY = Math.sqrt(1 - y * y);
+    const theta = index * goldenAngle;
+    const positionIndex = index * 3;
+
+    positions[positionIndex] = Math.cos(theta) * radiusAtY * GLOBE_RADIUS;
+    positions[positionIndex + 1] = y * GLOBE_RADIUS;
+    positions[positionIndex + 2] = Math.sin(theta) * radiusAtY * GLOBE_RADIUS;
+    seeds[index] = (index % 17) / 17;
+  }
+
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
+
+  return geometry;
+}
+
+function DigitalGlobeSurface() {
+  const dotGeometry = useMemo(createGlobeDotGeometry, []);
+  const dotUniforms = useMemo(
+    () => ({
+      uPointSize: { value: DOT_POINT_SIZE },
+      uInnerColor: { value: [0.22, 0.67, 1] },
+      uOuterColor: { value: [0.82, 0.95, 1] },
+    }),
+    [],
+  );
+
   return (
     <group>
       <mesh>
-        <sphereGeometry args={[1.6, 96, 96]} />
-        <meshBasicMaterial color="#123c68" />
+        <sphereGeometry args={[1.56, 96, 96]} />
+        <meshBasicMaterial color="#031021" />
       </mesh>
 
-      <mesh>
-        <sphereGeometry args={[1.605, 48, 48]} />
-        <meshBasicMaterial color="#66d6ff" wireframe transparent opacity={0.34} />
-      </mesh>
+      <points geometry={dotGeometry}>
+        <shaderMaterial
+          transparent
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+          uniforms={dotUniforms}
+          vertexShader={`
+            attribute float aSeed;
+            uniform float uPointSize;
+            varying float vFacing;
+            varying float vSeed;
+
+            void main() {
+              vec3 viewNormal = normalize(normalMatrix * normalize(position));
+              vFacing = smoothstep(-0.08, 0.85, viewNormal.z);
+              vSeed = aSeed;
+
+              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+              gl_Position = projectionMatrix * mvPosition;
+              gl_PointSize = uPointSize * (5.2 / -mvPosition.z) * mix(0.75, 1.35, vFacing);
+            }
+          `}
+          fragmentShader={`
+            precision highp float;
+
+            uniform vec3 uInnerColor;
+            uniform vec3 uOuterColor;
+            varying float vFacing;
+            varying float vSeed;
+
+            void main() {
+              vec2 point = gl_PointCoord - vec2(0.5);
+              float distanceFromCenter = length(point);
+              float dotMask = smoothstep(0.5, 0.18, distanceFromCenter);
+              float core = smoothstep(0.24, 0.0, distanceFromCenter);
+              float alpha = dotMask * mix(0.06, 0.72, vFacing) * mix(0.72, 1.0, vSeed);
+              vec3 color = mix(uInnerColor, uOuterColor, core * 0.85 + vFacing * 0.25);
+
+              if (alpha < 0.01) discard;
+              gl_FragColor = vec4(color, alpha);
+            }
+          `}
+        />
+      </points>
 
       <mesh>
-        <sphereGeometry args={[1.68, 96, 96]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.13} />
+        <sphereGeometry args={[1.69, 96, 96]} />
+        <meshBasicMaterial color="#1f8fff" transparent opacity={0.06} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -198,7 +276,7 @@ function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
       rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
       onPointerDown={handlePointerDown}
     >
-      <PlaceholderGlobe />
+      <DigitalGlobeSurface />
     </group>
   );
 }
