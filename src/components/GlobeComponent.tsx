@@ -1,11 +1,13 @@
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import {
   AdditiveBlending,
   BufferGeometry,
   Float32BufferAttribute,
   type Mesh,
+  type MeshBasicMaterial,
   QuadraticBezierCurve3,
+  type ShaderMaterial,
   TubeGeometry,
   Vector3,
   type Group,
@@ -37,10 +39,19 @@ const PULSE_LOOP_GAP = 0.48;
 const PULSE_TRAIL_OFFSET = 0.055;
 const NODE_RADIUS = ROUTE_RADIUS;
 const NODE_RIPPLE_DURATION = 2.8;
+const INTERACTION_ENERGY_EASING = 5.8;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
 };
+
+type InteractionState = "idle" | "dragging" | "momentum" | "settling";
+
+type GlobeSceneProps = GlobeGroupProps & {
+  onInteractionStateChange: (interactionState: InteractionState) => void;
+};
+
+type InteractionEnergyRef = MutableRefObject<number>;
 
 type RouteStatus = "primary" | "active" | "quiet";
 
@@ -162,6 +173,10 @@ function clamp(value: number, min: number, max: number) {
 
 function dampVelocity(velocity: number, friction: number, delta: number) {
   return velocity * Math.pow(friction, delta * 60);
+}
+
+function dampValue(current: number, target: number, smoothing: number, delta: number) {
+  return current + (target - current) * (1 - Math.exp(-smoothing * delta));
 }
 
 function getIdleBlend(horizontalVelocity: number) {
@@ -290,6 +305,11 @@ function getNodeRippleOpacity(status: RouteStatus) {
   return 0.1;
 }
 
+function getMomentumEnergy(velocity: AngularVelocity) {
+  const velocityStrength = Math.hypot(velocity.y / MAX_HORIZONTAL_VELOCITY, velocity.x / MAX_VERTICAL_VELOCITY);
+  return clamp(velocityStrength * 1.35, 0, 0.72);
+}
+
 function createGlobeDotGeometry() {
   const geometry = new BufferGeometry();
   const positions = new Float32Array(GLOBE_DOT_COUNT * 3);
@@ -314,19 +334,32 @@ function createGlobeDotGeometry() {
   return geometry;
 }
 
-function RimAtmosphere() {
+function RimAtmosphere({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
+  const rimMaterialRef = useRef<ShaderMaterial>(null);
+  const shellMaterialRef = useRef<MeshBasicMaterial>(null);
   const rimUniforms = useMemo(
     () => ({
       uGlowColor: { value: [0.35, 0.78, 1] },
+      uEnergy: { value: 0 },
     }),
     [],
   );
+
+  useFrame(() => {
+    const energy = interactionEnergyRef.current;
+    rimUniforms.uEnergy.value = energy;
+
+    if (shellMaterialRef.current) {
+      shellMaterialRef.current.opacity = 0.018 + energy * 0.016;
+    }
+  });
 
   return (
     <group>
       <mesh>
         <sphereGeometry args={[1.76, 128, 128]} />
         <shaderMaterial
+          ref={rimMaterialRef}
           transparent
           depthWrite={false}
           blending={AdditiveBlending}
@@ -344,11 +377,12 @@ function RimAtmosphere() {
             precision highp float;
 
             uniform vec3 uGlowColor;
+            uniform float uEnergy;
             varying float vRim;
 
             void main() {
               float rim = smoothstep(0.34, 1.0, vRim);
-              float alpha = pow(rim, 2.4) * 0.34;
+              float alpha = pow(rim, 2.4) * (0.34 + uEnergy * 0.18);
               gl_FragColor = vec4(uGlowColor, alpha);
             }
           `}
@@ -357,22 +391,40 @@ function RimAtmosphere() {
 
       <mesh scale={1.08}>
         <sphereGeometry args={[1.78, 128, 128]} />
-        <meshBasicMaterial color="#2f9fff" transparent opacity={0.018} depthWrite={false} blending={AdditiveBlending} />
+        <meshBasicMaterial
+          ref={shellMaterialRef}
+          color="#2f9fff"
+          transparent
+          opacity={0.018}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
       </mesh>
     </group>
   );
 }
 
-function DigitalGlobeSurface() {
+function DigitalGlobeSurface({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
   const dotGeometry = useMemo(createGlobeDotGeometry, []);
   const dotUniforms = useMemo(
     () => ({
       uPointSize: { value: DOT_POINT_SIZE },
       uInnerColor: { value: [0.22, 0.67, 1] },
       uOuterColor: { value: [0.82, 0.95, 1] },
+      uEnergy: { value: 0 },
     }),
     [],
   );
+  const innerShellRef = useRef<MeshBasicMaterial>(null);
+
+  useFrame(() => {
+    const energy = interactionEnergyRef.current;
+    dotUniforms.uEnergy.value = energy;
+
+    if (innerShellRef.current) {
+      innerShellRef.current.opacity = 0.06 + energy * 0.028;
+    }
+  });
 
   return (
     <group>
@@ -409,6 +461,7 @@ function DigitalGlobeSurface() {
 
             uniform vec3 uInnerColor;
             uniform vec3 uOuterColor;
+            uniform float uEnergy;
             varying float vFacing;
             varying float vSeed;
 
@@ -417,7 +470,7 @@ function DigitalGlobeSurface() {
               float distanceFromCenter = length(point);
               float dotMask = smoothstep(0.5, 0.18, distanceFromCenter);
               float core = smoothstep(0.24, 0.0, distanceFromCenter);
-              float alpha = dotMask * mix(0.06, 0.72, vFacing) * mix(0.72, 1.0, vSeed);
+              float alpha = dotMask * mix(0.06, 0.72 + uEnergy * 0.12, vFacing) * mix(0.72, 1.0, vSeed);
               vec3 color = mix(uInnerColor, uOuterColor, core * 0.85 + vFacing * 0.25);
 
               if (alpha < 0.01) discard;
@@ -429,21 +482,25 @@ function DigitalGlobeSurface() {
 
       <mesh>
         <sphereGeometry args={[1.69, 96, 96]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.06} depthWrite={false} />
+        <meshBasicMaterial ref={innerShellRef} color="#1f8fff" transparent opacity={0.06} depthWrite={false} />
       </mesh>
 
-      <RimAtmosphere />
+      <RimAtmosphere interactionEnergyRef={interactionEnergyRef} />
     </group>
   );
 }
 
-function RoutePulse({ asset }: { asset: RouteArcAsset }) {
+function RoutePulse({ asset, interactionEnergyRef }: { asset: RouteArcAsset; interactionEnergyRef: InteractionEnergyRef }) {
   const coreRef = useRef<Mesh>(null);
   const glowRef = useRef<Mesh>(null);
   const trailRef = useRef<Mesh>(null);
+  const coreMaterialRef = useRef<MeshBasicMaterial>(null);
+  const glowMaterialRef = useRef<MeshBasicMaterial>(null);
+  const trailMaterialRef = useRef<MeshBasicMaterial>(null);
   const baseScale = getPulseScale(asset.route.status);
 
   useFrame(({ clock }) => {
+    const energy = interactionEnergyRef.current;
     const loopDuration = asset.pulseDuration + PULSE_LOOP_GAP;
     const loopTime = (clock.elapsedTime + asset.pulseDelay) % loopDuration;
     const progress = clamp(loopTime / asset.pulseDuration, 0, 1);
@@ -465,13 +522,13 @@ function RoutePulse({ asset }: { asset: RouteArcAsset }) {
     if (coreRef.current) {
       coreRef.current.visible = true;
       coreRef.current.position.copy(pulsePosition);
-      coreRef.current.scale.setScalar(baseScale * shimmer);
+      coreRef.current.scale.setScalar(baseScale * shimmer * (1 + energy * 0.14));
     }
 
     if (glowRef.current) {
       glowRef.current.visible = true;
       glowRef.current.position.copy(pulsePosition);
-      glowRef.current.scale.setScalar(baseScale * 2.7 * shimmer);
+      glowRef.current.scale.setScalar(baseScale * 2.7 * shimmer * (1 + energy * 0.18));
     }
 
     if (trailRef.current) {
@@ -479,6 +536,10 @@ function RoutePulse({ asset }: { asset: RouteArcAsset }) {
       trailRef.current.position.copy(trailPosition);
       trailRef.current.scale.setScalar(baseScale * 1.45 * visibility);
     }
+
+    if (coreMaterialRef.current) coreMaterialRef.current.opacity = (0.88 + energy * 0.08) * visibility;
+    if (glowMaterialRef.current) glowMaterialRef.current.opacity = (0.2 + energy * 0.1) * visibility;
+    if (trailMaterialRef.current) trailMaterialRef.current.opacity = (0.18 + energy * 0.06) * visibility;
   });
 
   return (
@@ -486,6 +547,7 @@ function RoutePulse({ asset }: { asset: RouteArcAsset }) {
       <mesh ref={trailRef}>
         <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial
+          ref={trailMaterialRef}
           color="#6ad9ff"
           transparent
           opacity={0.18}
@@ -497,6 +559,7 @@ function RoutePulse({ asset }: { asset: RouteArcAsset }) {
       <mesh ref={glowRef}>
         <sphereGeometry args={[1, 18, 18]} />
         <meshBasicMaterial
+          ref={glowMaterialRef}
           color="#58d5ff"
           transparent
           opacity={0.2}
@@ -507,32 +570,50 @@ function RoutePulse({ asset }: { asset: RouteArcAsset }) {
       </mesh>
       <mesh ref={coreRef}>
         <sphereGeometry args={[1, 18, 18]} />
-        <meshBasicMaterial color="#d9fbff" transparent opacity={0.88} depthWrite={false} blending={AdditiveBlending} />
+        <meshBasicMaterial
+          ref={coreMaterialRef}
+          color="#d9fbff"
+          transparent
+          opacity={0.88}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
       </mesh>
     </group>
   );
 }
 
-function NetworkNodeMarker({ node, index }: { node: NetworkNode; index: number }) {
+function NetworkNodeMarker({
+  node,
+  index,
+  interactionEnergyRef,
+}: {
+  node: NetworkNode;
+  index: number;
+  interactionEnergyRef: InteractionEnergyRef;
+}) {
   const coreRef = useRef<Mesh>(null);
   const glowRef = useRef<Mesh>(null);
   const rippleRef = useRef<Mesh>(null);
+  const coreMaterialRef = useRef<MeshBasicMaterial>(null);
+  const glowMaterialRef = useRef<MeshBasicMaterial>(null);
   const position = useMemo(() => latLngToSpherePosition(node.latitude, node.longitude, NODE_RADIUS), [node]);
   const baseScale = getNodeScale(node);
   const rippleOpacity = getNodeRippleOpacity(node.status);
 
   useFrame(({ clock }) => {
+    const energy = interactionEnergyRef.current;
     const rippleTime = (clock.elapsedTime + index * 0.36) % NODE_RIPPLE_DURATION;
     const rippleProgress = rippleTime / NODE_RIPPLE_DURATION;
     const rippleFade = (1 - smoothstep(0.32, 1, rippleProgress)) * smoothstep(0, 0.12, rippleProgress);
     const breathing = 1 + Math.sin(clock.elapsedTime * 1.7 + index) * 0.045;
 
     if (coreRef.current) {
-      coreRef.current.scale.setScalar(baseScale * breathing);
+      coreRef.current.scale.setScalar(baseScale * breathing * (1 + energy * 0.1));
     }
 
     if (glowRef.current) {
-      glowRef.current.scale.setScalar(baseScale * 2.25 * breathing);
+      glowRef.current.scale.setScalar(baseScale * 2.25 * breathing * (1 + energy * 0.2));
     }
 
     if (rippleRef.current) {
@@ -542,6 +623,14 @@ function NetworkNodeMarker({ node, index }: { node: NetworkNode; index: number }
       if (!Array.isArray(material)) {
         material.opacity = rippleOpacity * rippleFade;
       }
+    }
+
+    if (coreMaterialRef.current) {
+      coreMaterialRef.current.opacity = (node.status === "primary" ? 0.92 : 0.78) + energy * 0.07;
+    }
+
+    if (glowMaterialRef.current) {
+      glowMaterialRef.current.opacity = (node.status === "primary" ? 0.28 : 0.2) + energy * 0.1;
     }
   });
 
@@ -562,6 +651,7 @@ function NetworkNodeMarker({ node, index }: { node: NetworkNode; index: number }
       <mesh ref={glowRef}>
         <sphereGeometry args={[1, 20, 20]} />
         <meshBasicMaterial
+          ref={glowMaterialRef}
           color="#3fc4ff"
           transparent
           opacity={node.status === "primary" ? 0.28 : 0.2}
@@ -573,6 +663,7 @@ function NetworkNodeMarker({ node, index }: { node: NetworkNode; index: number }
       <mesh ref={coreRef}>
         <sphereGeometry args={[1, 20, 20]} />
         <meshBasicMaterial
+          ref={coreMaterialRef}
           color={node.status === "quiet" ? "#8adfff" : "#e2fbff"}
           transparent
           opacity={node.status === "primary" ? 0.92 : 0.78}
@@ -585,13 +676,13 @@ function NetworkNodeMarker({ node, index }: { node: NetworkNode; index: number }
   );
 }
 
-function NetworkNodeLayer() {
+function NetworkNodeLayer({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
   const nodes = useMemo(() => extractNetworkNodes(GLOBAL_ROUTES), []);
 
   return (
     <group name="global-network-node-layer">
       {nodes.map((node, index) => (
-        <NetworkNodeMarker key={node.id} node={node} index={index} />
+        <NetworkNodeMarker key={node.id} node={node} index={index} interactionEnergyRef={interactionEnergyRef} />
       ))}
     </group>
   );
@@ -602,56 +693,120 @@ function smoothstep(edge0: number, edge1: number, value: number) {
   return x * x * (3 - 2 * x);
 }
 
-function RouteArcLayer() {
+function RouteArcLine({
+  route,
+  geometry,
+  interactionEnergyRef,
+}: {
+  route: GlobeRoute;
+  geometry: TubeGeometry;
+  interactionEnergyRef: InteractionEnergyRef;
+}) {
+  const glowMaterialRef = useRef<MeshBasicMaterial>(null);
+  const coreMaterialRef = useRef<MeshBasicMaterial>(null);
+
+  useFrame(() => {
+    const energy = interactionEnergyRef.current;
+
+    if (glowMaterialRef.current) {
+      glowMaterialRef.current.opacity = getRouteGlowOpacity(route.status) * (1 + energy * 0.9);
+    }
+
+    if (coreMaterialRef.current) {
+      coreMaterialRef.current.opacity = getRouteOpacity(route.status) * (1 + energy * 0.34);
+    }
+  });
+
+  return (
+    <group>
+      <mesh geometry={geometry}>
+        <meshBasicMaterial
+          ref={glowMaterialRef}
+          color="#4ebfff"
+          transparent
+          opacity={getRouteGlowOpacity(route.status)}
+          depthTest={false}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+      <mesh geometry={geometry}>
+        <meshBasicMaterial
+          ref={coreMaterialRef}
+          color={route.status === "primary" ? "#b8f3ff" : "#5fc8ff"}
+          transparent
+          opacity={getRouteOpacity(route.status)}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function RouteArcLayer({ interactionEnergyRef }: { interactionEnergyRef: InteractionEnergyRef }) {
   const routeAssets = useMemo(() => GLOBAL_ROUTES.map(createRouteArcAsset), []);
 
   return (
     <group name="global-route-arc-layer">
       {routeAssets.map(({ route, geometry }) => (
-        <group key={route.id}>
-          <mesh geometry={geometry}>
-            <meshBasicMaterial
-              color="#4ebfff"
-              transparent
-              opacity={getRouteGlowOpacity(route.status)}
-              depthTest={false}
-              depthWrite={false}
-              blending={AdditiveBlending}
-            />
-          </mesh>
-          <mesh geometry={geometry}>
-            <meshBasicMaterial
-              color={route.status === "primary" ? "#b8f3ff" : "#5fc8ff"}
-              transparent
-              opacity={getRouteOpacity(route.status)}
-              depthTest
-              depthWrite={false}
-              blending={AdditiveBlending}
-            />
-          </mesh>
-        </group>
+        <RouteArcLine key={route.id} route={route} geometry={geometry} interactionEnergyRef={interactionEnergyRef} />
       ))}
       {routeAssets.map((asset) => (
-        <RoutePulse key={`${asset.route.id}-pulse`} asset={asset} />
+        <RoutePulse key={`${asset.route.id}-pulse`} asset={asset} interactionEnergyRef={interactionEnergyRef} />
       ))}
-      <NetworkNodeLayer />
+      <NetworkNodeLayer interactionEnergyRef={interactionEnergyRef} />
     </group>
   );
 }
 
-function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
+function GlobeGroup({ onDraggingChange, onInteractionStateChange }: GlobeSceneProps) {
   const globeRef = useRef<Group>(null);
   const isDraggingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
   const previousPointerRef = useRef<PointerPosition | null>(null);
   const angularVelocityRef = useRef<AngularVelocity>({ x: 0, y: 0 });
+  const interactionStateRef = useRef<InteractionState>("idle");
+  const interactionEnergyRef = useRef(0);
+
+  const setInteractionState = useCallback(
+    (nextState: InteractionState) => {
+      if (interactionStateRef.current === nextState) return;
+      interactionStateRef.current = nextState;
+      onInteractionStateChange(nextState);
+    },
+    [onInteractionStateChange],
+  );
+
+  useEffect(() => {
+    onInteractionStateChange(interactionStateRef.current);
+  }, [onInteractionStateChange]);
 
   useFrame((_, delta) => {
     if (!globeRef.current) return;
-    if (isDraggingRef.current) return;
+    if (isDraggingRef.current) {
+      interactionEnergyRef.current = dampValue(interactionEnergyRef.current, 1, INTERACTION_ENERGY_EASING, delta);
+      return;
+    }
 
     const velocity = angularVelocityRef.current;
     const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON || Math.abs(velocity.x) > MOMENTUM_EPSILON;
+    const targetEnergy = hasMomentum ? getMomentumEnergy(velocity) : 0;
+    interactionEnergyRef.current = dampValue(
+      interactionEnergyRef.current,
+      targetEnergy,
+      INTERACTION_ENERGY_EASING * (hasMomentum ? 0.74 : 0.48),
+      delta,
+    );
+
+    if (hasMomentum) {
+      setInteractionState("momentum");
+    } else if (interactionEnergyRef.current > 0.025) {
+      setInteractionState("settling");
+    } else {
+      setInteractionState("idle");
+    }
 
     if (hasMomentum) {
       globeRef.current.rotation.y += velocity.y * delta;
@@ -752,6 +907,7 @@ function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
       isDraggingRef.current = true;
       activePointerIdRef.current = event.pointerId;
       angularVelocityRef.current = { x: 0, y: 0 };
+      setInteractionState("dragging");
       previousPointerRef.current = {
         x: event.clientX,
         y: event.clientY,
@@ -769,29 +925,33 @@ function GlobeGroup({ onDraggingChange }: GlobeGroupProps) {
       rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
       onPointerDown={handlePointerDown}
     >
-      <DigitalGlobeSurface />
-      <RouteArcLayer />
+      <DigitalGlobeSurface interactionEnergyRef={interactionEnergyRef} />
+      <RouteArcLayer interactionEnergyRef={interactionEnergyRef} />
     </group>
   );
 }
 
-function GlobeScene({ onDraggingChange }: GlobeGroupProps) {
+function GlobeScene({ onDraggingChange, onInteractionStateChange }: GlobeSceneProps) {
   return (
     <>
       <ambientLight intensity={0.42} />
       <directionalLight position={[4, 3, 5]} intensity={1.8} color="#8bc3ff" />
       <pointLight position={[-3, -1.5, 3]} intensity={2.1} color="#2b6dff" />
       <pointLight position={[0, 2.5, -4]} intensity={1} color="#2de8ff" />
-      <GlobeGroup onDraggingChange={onDraggingChange} />
+      <GlobeGroup onDraggingChange={onDraggingChange} onInteractionStateChange={onInteractionStateChange} />
     </>
   );
 }
 
 export function GlobeComponent() {
   const [isDragging, setIsDragging] = useState(false);
+  const [interactionState, setInteractionState] = useState<InteractionState>("idle");
 
   return (
-    <section className={`globe-section${isDragging ? " is-dragging" : ""}`} aria-label="Kinetic network globe">
+    <section
+      className={`globe-section is-${interactionState}${isDragging ? " is-dragging" : ""}`}
+      aria-label="Kinetic network globe"
+    >
       <div className="globe-ambient" aria-hidden="true" />
       <div className="globe-stage">
         <Canvas
@@ -800,7 +960,7 @@ export function GlobeComponent() {
           dpr={[1, 1.75]}
           gl={{ antialias: true, alpha: true }}
         >
-          <GlobeScene onDraggingChange={setIsDragging} />
+          <GlobeScene onDraggingChange={setIsDragging} onInteractionStateChange={setInteractionState} />
         </Canvas>
       </div>
     </section>

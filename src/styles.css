@@ -55,6 +55,18 @@ body {
     radial-gradient(ellipse, rgba(0, 230, 255, 0.08), transparent 74%);
   content: "";
   filter: blur(2.5rem);
+  opacity: 0.86;
+  transition: opacity 420ms ease, filter 420ms ease;
+}
+
+.globe-section.is-dragging::after {
+  filter: blur(2.1rem);
+  opacity: 1;
+}
+
+.globe-section.is-momentum::after,
+.globe-section.is-settling::after {
+  opacity: 0.94;
 }
 
 .globe-ambient {
@@ -68,6 +80,18 @@ body {
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: radial-gradient(circle at center, black 0%, transparent 74%);
+  opacity: 0.92;
+  transition: opacity 420ms ease, filter 420ms ease;
+}
+
+.globe-section.is-dragging .globe-ambient {
+  filter: saturate(1.12);
+  opacity: 1;
+}
+
+.globe-section.is-momentum .globe-ambient,
+.globe-section.is-settling .globe-ambient {
+  opacity: 0.96;
 }
 
 .globe-ambient::before {
@@ -76,6 +100,18 @@ body {
   background: radial-gradient(circle, rgba(80, 150, 255, 0.16), rgba(0, 0, 0, 0) 64%);
   content: "";
   filter: blur(5rem);
+  opacity: 0.88;
+  transition: opacity 420ms ease, transform 420ms ease;
+}
+
+.globe-section.is-dragging .globe-ambient::before {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.globe-section.is-momentum .globe-ambient::before,
+.globe-section.is-settling .globe-ambient::before {
+  opacity: 0.94;
 }
 
 .globe-stage {
