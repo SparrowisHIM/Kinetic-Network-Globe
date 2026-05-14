@@ -83,6 +83,12 @@ type NetworkNode = {
   routeCount: number;
 };
 
+const NETWORK_STATS = [
+  { label: "Active Routes", value: "08" },
+  { label: "Signal Pulses", value: "24" },
+  { label: "Latency", value: "42ms" },
+];
+
 const GLOBAL_ROUTES: GlobeRoute[] = [
   {
     id: "lagos-london",
@@ -953,6 +959,29 @@ export function GlobeComponent() {
       aria-label="Kinetic network globe"
     >
       <div className="globe-ambient" aria-hidden="true" />
+      <div className="globe-overlay" aria-hidden="true">
+        <div className="globe-copy">
+          <div className="globe-status">
+            <span className="globe-status-dot" />
+            Live network simulation
+          </div>
+          <h1>Kinetic Network Globe</h1>
+          <p>A real-time orbital interface for visualizing global movement, signals, and connected systems.</p>
+        </div>
+
+        <div className="globe-stats">
+          {NETWORK_STATS.map((stat) => (
+            <div className="globe-stat" key={stat.label}>
+              <span>{stat.value}</span>
+              <small>{stat.label}</small>
+            </div>
+          ))}
+          <div className="globe-stat globe-stat-wide">
+            <span>Online</span>
+            <small>Global Sync</small>
+          </div>
+        </div>
+      </div>
       <div className="globe-stage">
         <Canvas
           className="globe-canvas"

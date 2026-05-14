@@ -45,6 +45,110 @@ body {
   isolation: isolate;
 }
 
+.globe-overlay {
+  position: absolute;
+  inset: clamp(1rem, 3vw, 2.4rem);
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 24rem) minmax(12rem, 18rem);
+  align-items: start;
+  justify-content: space-between;
+  gap: 2rem;
+  pointer-events: none;
+}
+
+.globe-copy {
+  max-width: 24rem;
+}
+
+.globe-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  color: rgba(205, 239, 255, 0.72);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.globe-status-dot {
+  width: 0.44rem;
+  height: 0.44rem;
+  border-radius: 999px;
+  background: #69e8ff;
+  box-shadow:
+    0 0 0 0.24rem rgba(62, 205, 255, 0.08),
+    0 0 1.1rem rgba(75, 215, 255, 0.72);
+}
+
+.globe-copy h1 {
+  max-width: 18rem;
+  margin: 0;
+  color: #f3fbff;
+  font-size: clamp(2rem, 4.3vw, 4.2rem);
+  font-weight: 720;
+  letter-spacing: 0;
+  line-height: 0.92;
+}
+
+.globe-copy p {
+  max-width: 23rem;
+  margin: 1rem 0 0;
+  color: rgba(218, 236, 255, 0.7);
+  font-size: clamp(0.92rem, 1.2vw, 1.03rem);
+  line-height: 1.6;
+}
+
+.globe-stats {
+  justify-self: end;
+  display: grid;
+  width: min(18rem, 28vw);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.globe-stat {
+  min-height: 4.35rem;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid rgba(144, 208, 255, 0.14);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(9, 22, 44, 0.58), rgba(4, 10, 22, 0.3)),
+    rgba(4, 11, 22, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.globe-stat-wide {
+  grid-column: 1 / -1;
+  min-height: 3.45rem;
+}
+
+.globe-stat span,
+.globe-stat small {
+  display: block;
+}
+
+.globe-stat span {
+  color: rgba(239, 250, 255, 0.94);
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+.globe-stat small {
+  margin-top: 0.42rem;
+  color: rgba(167, 204, 226, 0.62);
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
 .globe-section::after {
   position: absolute;
   inset: auto 8% 6%;
@@ -138,6 +242,62 @@ body {
   .globe-section {
     min-height: 86svh;
     padding: 1.25rem;
+    align-content: center;
+  }
+
+  .globe-overlay {
+    inset: 1rem;
+    grid-template-columns: 1fr;
+    align-content: space-between;
+    gap: 1rem;
+  }
+
+  .globe-copy {
+    max-width: 18rem;
+  }
+
+  .globe-status {
+    margin-bottom: 0.7rem;
+    font-size: 0.64rem;
+  }
+
+  .globe-copy h1 {
+    max-width: 14rem;
+    font-size: clamp(1.9rem, 10vw, 2.7rem);
+  }
+
+  .globe-copy p {
+    max-width: 18rem;
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .globe-stats {
+    align-self: end;
+    justify-self: stretch;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.42rem;
+  }
+
+  .globe-stat {
+    min-height: 3.25rem;
+    padding: 0.62rem 0.65rem;
+  }
+
+  .globe-stat:nth-child(3),
+  .globe-stat-wide {
+    display: none;
+  }
+
+  .globe-stat span {
+    font-size: 0.9rem;
+  }
+
+  .globe-stat small {
+    margin-top: 0.28rem;
+    font-size: 0.56rem;
   }
 
   .globe-stage {
