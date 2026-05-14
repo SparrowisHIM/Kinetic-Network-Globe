@@ -1,0 +1,89 @@
+:root {
+  color: #edf6ff;
+  background: #030814;
+  font-family:
+    "Aptos Display",
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(33, 117, 255, 0.16), transparent 34rem),
+    radial-gradient(circle at 18% 82%, rgba(0, 220, 255, 0.08), transparent 24rem),
+    linear-gradient(180deg, #020511 0%, #050b18 46%, #02040b 100%);
+}
+
+.globe-section {
+  position: relative;
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(2rem, 5vw, 5rem);
+  isolation: isolate;
+}
+
+.globe-section::after {
+  position: absolute;
+  inset: auto 10% 7%;
+  z-index: -2;
+  height: 10rem;
+  background: radial-gradient(ellipse, rgba(43, 113, 255, 0.2), transparent 68%);
+  content: "";
+  filter: blur(2rem);
+}
+
+.globe-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 68%);
+}
+
+.globe-stage {
+  width: min(82vw, 72svh, 760px);
+  aspect-ratio: 1;
+  min-width: min(84vw, 320px);
+}
+
+.globe-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 640px) {
+  .globe-section {
+    min-height: 86svh;
+    padding: 1.25rem;
+  }
+
+  .globe-stage {
+    width: min(92vw, 64svh, 420px);
+  }
+}
