@@ -1,6 +1,6 @@
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import landDotsData from "../data/landDots.json";
+import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
 import {
   AdditiveBlending,
   BufferGeometry,
@@ -99,12 +99,6 @@ type NetworkNode = {
   longitude: number;
   status: RouteStatus;
   routeCount: number;
-};
-
-type LandDotsData = {
-  radius: number;
-  source: string;
-  dots: [number, number, number, number][];
 };
 
 const GLOBAL_ROUTES: GlobeRoute[] = [
@@ -215,6 +209,24 @@ function latLngToSpherePosition(latitude: number, longitude: number, radius = RO
   const z = radius * Math.sin(phi) * Math.sin(theta);
 
   return new Vector3(x, y, z);
+}
+
+function landPointToSpherePosition(point: LandPoint, radius = GLOBE_RADIUS) {
+  const latRad = (point.lat * Math.PI) / 180;
+  const lonRad = (point.lon * Math.PI) / 180;
+  const x = radius * Math.cos(latRad) * Math.sin(lonRad);
+  const y = radius * Math.sin(latRad);
+  const z = radius * Math.cos(latRad) * Math.cos(lonRad);
+
+  return { x, y, z };
+}
+
+function getLandPointSeed(point: LandPoint) {
+  const lonSeed = Math.round((point.lon + 180) * 1000);
+  const latSeed = Math.round((point.lat + 90) * 1000);
+  const mixed = Math.imul(lonSeed ^ 0x9e3779b9, 2654435761) ^ Math.imul(latSeed, 1597334677);
+
+  return ((mixed >>> 0) % 10000) / 10000;
 }
 
 function createRouteCurve(route: GlobeRoute) {
@@ -403,17 +415,18 @@ function RimAtmosphere() {
 
 function DigitalGlobeSurface() {
   const landGeometry = useMemo(() => {
-    const dots = (landDotsData as unknown as LandDotsData).dots;
-    const positions = new Float32Array(dots.length * 3);
-    const seeds = new Float32Array(dots.length);
+    const landPoints = generateLandPoints();
+    const positions = new Float32Array(landPoints.length * 3);
+    const seeds = new Float32Array(landPoints.length);
     const geometry = new BufferGeometry();
 
-    dots.forEach((dot, index) => {
+    landPoints.forEach((point, index) => {
       const positionIndex = index * 3;
-      positions[positionIndex] = dot[0];
-      positions[positionIndex + 1] = dot[1];
-      positions[positionIndex + 2] = dot[2];
-      seeds[index] = dot[3];
+      const position = landPointToSpherePosition(point);
+      positions[positionIndex] = position.x;
+      positions[positionIndex + 1] = position.y;
+      positions[positionIndex + 2] = position.z;
+      seeds[index] = getLandPointSeed(point);
     });
 
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
