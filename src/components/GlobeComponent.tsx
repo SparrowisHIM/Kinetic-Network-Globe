@@ -1,5 +1,6 @@
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import landTopology from "world-atlas/land-110m.json";
 import {
   AdditiveBlending,
   BufferGeometry,
@@ -12,6 +13,7 @@ import {
   Vector3,
   type Group,
 } from "three";
+import { feature } from "topojson-client";
 
 const IDLE_ROTATION_SPEED = 0.045;
 const GLOBE_DISPLAY_TILT = -0.18;
@@ -29,10 +31,13 @@ const IDLE_BLEND_START_VELOCITY = 0.16;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
-const DESKTOP_GLOBE_DOT_COUNT = 5200;
-const COMPACT_GLOBE_DOT_COUNT = 3800;
+const DESKTOP_LAND_DOT_COUNT = 7600;
+const COMPACT_LAND_DOT_COUNT = 5200;
+const DESKTOP_OCEAN_DOT_COUNT = 2400;
+const COMPACT_OCEAN_DOT_COUNT = 1500;
 const GLOBE_RADIUS = 1.62;
-const DOT_POINT_SIZE = 3.8;
+const LAND_DOT_POINT_SIZE = 3.15;
+const OCEAN_DOT_POINT_SIZE = 2.15;
 const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
 const DESKTOP_ROUTE_SEGMENTS = 96;
 const COMPACT_ROUTE_SEGMENTS = 72;
@@ -98,6 +103,27 @@ type NetworkNode = {
   longitude: number;
   status: RouteStatus;
   routeCount: number;
+};
+
+type SurfaceDotCounts = {
+  land: number;
+  ocean: number;
+};
+
+type SurfaceDotGeometries = {
+  land: BufferGeometry;
+  ocean: BufferGeometry;
+};
+
+type GeoRing = [number, number][];
+type GeoPolygon = GeoRing[];
+
+type PreparedLandPolygon = {
+  rings: GeoPolygon;
+  minLng: number;
+  maxLng: number;
+  minLat: number;
+  maxLat: number;
 };
 
 const NETWORK_STATS = [
@@ -216,6 +242,115 @@ function latLngToSpherePosition(latitude: number, longitude: number, radius = RO
   return new Vector3(x, y, z);
 }
 
+function normalizeLongitude(longitude: number) {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
+function getRingBounds(ring: GeoRing) {
+  return ring.reduce(
+    (bounds, [longitude, latitude]) => ({
+      minLng: Math.min(bounds.minLng, longitude),
+      maxLng: Math.max(bounds.maxLng, longitude),
+      minLat: Math.min(bounds.minLat, latitude),
+      maxLat: Math.max(bounds.maxLat, latitude),
+    }),
+    {
+      minLng: Number.POSITIVE_INFINITY,
+      maxLng: Number.NEGATIVE_INFINITY,
+      minLat: Number.POSITIVE_INFINITY,
+      maxLat: Number.NEGATIVE_INFINITY,
+    },
+  );
+}
+
+function pointInRing(longitude: number, latitude: number, ring: GeoRing) {
+  let inside = false;
+
+  for (let current = 0, previous = ring.length - 1; current < ring.length; previous = current, current += 1) {
+    const [currentLng, currentLat] = ring[current];
+    const [previousLng, previousLat] = ring[previous];
+    const intersects =
+      currentLat > latitude !== previousLat > latitude &&
+      longitude < ((previousLng - currentLng) * (latitude - currentLat)) / (previousLat - currentLat) + currentLng;
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function pointInPreparedPolygon(longitude: number, latitude: number, polygon: PreparedLandPolygon) {
+  if (
+    longitude < polygon.minLng ||
+    longitude > polygon.maxLng ||
+    latitude < polygon.minLat ||
+    latitude > polygon.maxLat ||
+    !pointInRing(longitude, latitude, polygon.rings[0])
+  ) {
+    return false;
+  }
+
+  for (let index = 1; index < polygon.rings.length; index += 1) {
+    if (pointInRing(longitude, latitude, polygon.rings[index])) return false;
+  }
+
+  return true;
+}
+
+function prepareLandPolygons() {
+  const topology = landTopology as {
+    objects: {
+      land: unknown;
+    };
+  };
+  const landFeature = feature(landTopology as never, topology.objects.land as never) as unknown as {
+    type: "FeatureCollection";
+    features: Array<{
+      geometry:
+        | {
+            type: "Polygon";
+            coordinates: GeoPolygon;
+          }
+        | {
+            type: "MultiPolygon";
+            coordinates: GeoPolygon[];
+          }
+        | null;
+    }>;
+  };
+  const geometries = landFeature.features.map((land) => land.geometry);
+  const polygons: PreparedLandPolygon[] = [];
+
+  geometries.forEach((geometry) => {
+    if (!geometry) return;
+
+    const polygonGroups =
+      geometry.type === "Polygon"
+        ? [geometry.coordinates as GeoPolygon]
+        : geometry.type === "MultiPolygon"
+          ? (geometry.coordinates as GeoPolygon[])
+          : [];
+
+    polygonGroups.forEach((rings) => {
+      if (!rings[0]?.length) return;
+      const bounds = getRingBounds(rings[0]);
+
+      polygons.push({
+        rings,
+        ...bounds,
+      });
+    });
+  });
+
+  return polygons;
+}
+
+const LAND_POLYGONS = prepareLandPolygons();
+
+function isLandCoordinate(longitude: number, latitude: number) {
+  return LAND_POLYGONS.some((polygon) => pointInPreparedPolygon(longitude, latitude, polygon));
+}
+
 function createRouteCurve(route: GlobeRoute) {
   const start = latLngToSpherePosition(route.startLat, route.startLng);
   const end = latLngToSpherePosition(route.endLat, route.endLng);
@@ -326,28 +461,55 @@ function getMomentumEnergy(velocity: AngularVelocity) {
   return clamp(velocityStrength * 1.35, 0, 0.72);
 }
 
-function createGlobeDotGeometry(dotCount: number) {
-  const geometry = new BufferGeometry();
-  const positions = new Float32Array(dotCount * 3);
-  const seeds = new Float32Array(dotCount);
+function createSurfacePointGeometry(dotCounts: SurfaceDotCounts) {
+  const candidateCount = Math.max((dotCounts.land + dotCounts.ocean) * 5, 24000);
+  const landPositions = new Float32Array(dotCounts.land * 3);
+  const oceanPositions = new Float32Array(dotCounts.ocean * 3);
+  const landSeeds = new Float32Array(dotCounts.land);
+  const oceanSeeds = new Float32Array(dotCounts.ocean);
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  let landIndex = 0;
+  let oceanIndex = 0;
 
-  for (let index = 0; index < dotCount; index += 1) {
-    const y = 1 - (index / (dotCount - 1)) * 2;
-    const radiusAtY = Math.sqrt(1 - y * y);
+  for (let index = 0; index < candidateCount; index += 1) {
+    if (landIndex >= dotCounts.land && oceanIndex >= dotCounts.ocean) break;
+
+    const y = 1 - (index / (candidateCount - 1)) * 2;
     const theta = index * goldenAngle;
-    const positionIndex = index * 3;
+    const latitude = (Math.asin(y) * 180) / Math.PI;
+    const longitude = normalizeLongitude((theta * 180) / Math.PI);
+    const position = latLngToSpherePosition(latitude, longitude, GLOBE_RADIUS + 0.006);
+    const isLand = isLandCoordinate(longitude, latitude);
 
-    positions[positionIndex] = Math.cos(theta) * radiusAtY * GLOBE_RADIUS;
-    positions[positionIndex + 1] = y * GLOBE_RADIUS;
-    positions[positionIndex + 2] = Math.sin(theta) * radiusAtY * GLOBE_RADIUS;
-    seeds[index] = (index % 17) / 17;
+    if (isLand && landIndex < dotCounts.land) {
+      const positionIndex = landIndex * 3;
+      landPositions[positionIndex] = position.x;
+      landPositions[positionIndex + 1] = position.y;
+      landPositions[positionIndex + 2] = position.z;
+      landSeeds[landIndex] = (index % 23) / 23;
+      landIndex += 1;
+    } else if (!isLand && oceanIndex < dotCounts.ocean && index % 3 === 0) {
+      const positionIndex = oceanIndex * 3;
+      oceanPositions[positionIndex] = position.x;
+      oceanPositions[positionIndex + 1] = position.y;
+      oceanPositions[positionIndex + 2] = position.z;
+      oceanSeeds[oceanIndex] = (index % 19) / 19;
+      oceanIndex += 1;
+    }
   }
 
-  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
+  const landGeometry = new BufferGeometry();
+  const oceanGeometry = new BufferGeometry();
 
-  return geometry;
+  landGeometry.setAttribute("position", new Float32BufferAttribute(landPositions.slice(0, landIndex * 3), 3));
+  landGeometry.setAttribute("aSeed", new Float32BufferAttribute(landSeeds.slice(0, landIndex), 1));
+  oceanGeometry.setAttribute("position", new Float32BufferAttribute(oceanPositions.slice(0, oceanIndex * 3), 3));
+  oceanGeometry.setAttribute("aSeed", new Float32BufferAttribute(oceanSeeds.slice(0, oceanIndex), 1));
+
+  return {
+    land: landGeometry,
+    ocean: oceanGeometry,
+  };
 }
 
 function useMediaQuery(query: string) {
@@ -446,18 +608,36 @@ function RimAtmosphere({
 function DigitalGlobeSurface({
   interactionEnergyRef,
   prefersReducedMotion,
-  dotCount,
+  dotCounts,
 }: {
   interactionEnergyRef: InteractionEnergyRef;
   prefersReducedMotion: boolean;
-  dotCount: number;
+  dotCounts: SurfaceDotCounts;
 }) {
-  const dotGeometry = useMemo(() => createGlobeDotGeometry(dotCount), [dotCount]);
-  const dotUniforms = useMemo(
+  const surfaceGeometries = useMemo(() => createSurfacePointGeometry(dotCounts), [dotCounts]);
+  const landUniforms = useMemo(
     () => ({
-      uPointSize: { value: DOT_POINT_SIZE },
-      uInnerColor: { value: [0.22, 0.67, 1] },
+      uPointSize: { value: LAND_DOT_POINT_SIZE },
+      uInnerColor: { value: [0.36, 0.78, 1] },
       uOuterColor: { value: [0.82, 0.95, 1] },
+      uBaseAlpha: { value: 0.13 },
+      uBrightAlpha: { value: 0.86 },
+      uSweepStrength: { value: 0.16 },
+      uPointScale: { value: 1 },
+      uEnergy: { value: 0 },
+      uTime: { value: 0 },
+    }),
+    [],
+  );
+  const oceanUniforms = useMemo(
+    () => ({
+      uPointSize: { value: OCEAN_DOT_POINT_SIZE },
+      uInnerColor: { value: [0.12, 0.38, 0.62] },
+      uOuterColor: { value: [0.36, 0.62, 0.78] },
+      uBaseAlpha: { value: 0.012 },
+      uBrightAlpha: { value: 0.16 },
+      uSweepStrength: { value: 0.035 },
+      uPointScale: { value: 0.82 },
       uEnergy: { value: 0 },
       uTime: { value: 0 },
     }),
@@ -465,17 +645,77 @@ function DigitalGlobeSurface({
   );
   const innerShellRef = useRef<MeshBasicMaterial>(null);
 
-  useEffect(() => () => dotGeometry.dispose(), [dotGeometry]);
+  useEffect(
+    () => () => {
+      surfaceGeometries.land.dispose();
+      surfaceGeometries.ocean.dispose();
+    },
+    [surfaceGeometries],
+  );
 
   useFrame(({ clock }) => {
     const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
-    dotUniforms.uEnergy.value = energy;
-    dotUniforms.uTime.value = prefersReducedMotion ? 0 : clock.elapsedTime;
+    const time = prefersReducedMotion ? 0 : clock.elapsedTime;
+
+    landUniforms.uEnergy.value = energy;
+    landUniforms.uTime.value = time;
+    oceanUniforms.uEnergy.value = energy;
+    oceanUniforms.uTime.value = time;
 
     if (innerShellRef.current) {
-      innerShellRef.current.opacity = 0.06 + energy * 0.028;
+      innerShellRef.current.opacity = 0.035 + energy * 0.02;
     }
   });
+
+  const surfaceVertexShader = `
+    attribute float aSeed;
+    uniform float uPointSize;
+    uniform float uPointScale;
+    uniform float uTime;
+    varying float vFacing;
+    varying float vSeed;
+    varying float vSweep;
+
+    void main() {
+      vec3 viewNormal = normalize(normalMatrix * normalize(position));
+      vFacing = smoothstep(-0.05, 0.92, viewNormal.z);
+      vSeed = aSeed;
+      float latitude = position.y / ${GLOBE_RADIUS.toFixed(2)};
+      float slowBand = sin(latitude * 8.4 + uTime * 0.62 + aSeed * 6.28318530718);
+      vSweep = smoothstep(0.9, 1.0, slowBand * 0.5 + 0.5) * vFacing;
+
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * mvPosition;
+      gl_PointSize = uPointSize * uPointScale * (5.2 / -mvPosition.z) * mix(0.62, 1.18, vFacing);
+    }
+  `;
+
+  const surfaceFragmentShader = `
+    precision highp float;
+
+    uniform vec3 uInnerColor;
+    uniform vec3 uOuterColor;
+    uniform float uBaseAlpha;
+    uniform float uBrightAlpha;
+    uniform float uSweepStrength;
+    uniform float uEnergy;
+    varying float vFacing;
+    varying float vSeed;
+    varying float vSweep;
+
+    void main() {
+      vec2 point = gl_PointCoord - vec2(0.5);
+      float distanceFromCenter = length(point);
+      float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
+      float core = smoothstep(0.22, 0.0, distanceFromCenter);
+      float alpha = dotMask * mix(uBaseAlpha, uBrightAlpha + uEnergy * 0.08, vFacing) * mix(0.72, 1.0, vSeed);
+      alpha += dotMask * vSweep * uSweepStrength;
+      vec3 color = mix(uInnerColor, uOuterColor, core * 0.76 + vFacing * 0.2 + vSweep * 0.2);
+
+      if (alpha < 0.01) discard;
+      gl_FragColor = vec4(color, alpha);
+    }
+  `;
 
   return (
     <group>
@@ -484,63 +724,33 @@ function DigitalGlobeSurface({
         <meshBasicMaterial color="#031021" />
       </mesh>
 
-      <points geometry={dotGeometry}>
+      <points geometry={surfaceGeometries.ocean}>
         <shaderMaterial
           transparent
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
-          uniforms={dotUniforms}
-          vertexShader={`
-            attribute float aSeed;
-            uniform float uPointSize;
-            uniform float uTime;
-            varying float vFacing;
-            varying float vSeed;
-            varying float vSweep;
+          uniforms={oceanUniforms}
+          vertexShader={surfaceVertexShader}
+          fragmentShader={surfaceFragmentShader}
+        />
+      </points>
 
-            void main() {
-              vec3 viewNormal = normalize(normalMatrix * normalize(position));
-              vFacing = smoothstep(-0.08, 0.85, viewNormal.z);
-              vSeed = aSeed;
-              float latitude = position.y / ${GLOBE_RADIUS.toFixed(2)};
-              float slowBand = sin(latitude * 7.2 + uTime * 0.72 + aSeed * 6.28318530718);
-              vSweep = smoothstep(0.88, 1.0, slowBand * 0.5 + 0.5) * vFacing;
-
-              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-              gl_Position = projectionMatrix * mvPosition;
-              gl_PointSize = uPointSize * (5.2 / -mvPosition.z) * mix(0.75, 1.35, vFacing);
-            }
-          `}
-          fragmentShader={`
-            precision highp float;
-
-            uniform vec3 uInnerColor;
-            uniform vec3 uOuterColor;
-            uniform float uEnergy;
-            varying float vFacing;
-            varying float vSeed;
-            varying float vSweep;
-
-            void main() {
-              vec2 point = gl_PointCoord - vec2(0.5);
-              float distanceFromCenter = length(point);
-              float dotMask = smoothstep(0.5, 0.18, distanceFromCenter);
-              float core = smoothstep(0.24, 0.0, distanceFromCenter);
-              float alpha = dotMask * mix(0.05, 0.66 + uEnergy * 0.1, vFacing) * mix(0.68, 1.0, vSeed);
-              alpha += dotMask * vSweep * 0.18;
-              vec3 color = mix(uInnerColor, uOuterColor, core * 0.82 + vFacing * 0.22 + vSweep * 0.24);
-
-              if (alpha < 0.01) discard;
-              gl_FragColor = vec4(color, alpha);
-            }
-          `}
+      <points geometry={surfaceGeometries.land}>
+        <shaderMaterial
+          transparent
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+          uniforms={landUniforms}
+          vertexShader={surfaceVertexShader}
+          fragmentShader={surfaceFragmentShader}
         />
       </points>
 
       <mesh>
         <sphereGeometry args={[1.69, 96, 96]} />
-        <meshBasicMaterial ref={innerShellRef} color="#1f8fff" transparent opacity={0.06} depthWrite={false} />
+        <meshBasicMaterial ref={innerShellRef} color="#1f8fff" transparent opacity={0.035} depthWrite={false} />
       </mesh>
 
       <RimAtmosphere interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
@@ -982,6 +1192,13 @@ function GlobeGroup({
   const angularVelocityRef = useRef<AngularVelocity>({ y: 0 });
   const interactionStateRef = useRef<InteractionState>("idle");
   const interactionEnergyRef = useRef(0);
+  const surfaceDotCounts = useMemo(
+    () => ({
+      land: isCompactViewport ? COMPACT_LAND_DOT_COUNT : DESKTOP_LAND_DOT_COUNT,
+      ocean: isCompactViewport ? COMPACT_OCEAN_DOT_COUNT : DESKTOP_OCEAN_DOT_COUNT,
+    }),
+    [isCompactViewport],
+  );
 
   const setInteractionState = useCallback(
     (nextState: InteractionState) => {
@@ -1142,7 +1359,7 @@ function GlobeGroup({
           <DigitalGlobeSurface
             interactionEnergyRef={interactionEnergyRef}
             prefersReducedMotion={prefersReducedMotion}
-            dotCount={isCompactViewport ? COMPACT_GLOBE_DOT_COUNT : DESKTOP_GLOBE_DOT_COUNT}
+            dotCounts={surfaceDotCounts}
           />
           <OrbitalVeil interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
           <RouteArcLayer
