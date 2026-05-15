@@ -1,4 +1,4 @@
-import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
+import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
 import { projectLonLatToSphere } from "../utils/sphereProjection";
@@ -523,6 +523,56 @@ function DigitalGlobeSurface() {
       <RimAtmosphere />
     </group>
   );
+}
+
+function DebugCenteringGuides() {
+  const axisPositions = useMemo(() => new Float32Array([0, -GLOBE_RADIUS, 0, 0, GLOBE_RADIUS, 0]), []);
+
+  if (!GLOBE_DEBUG_MODE) return null;
+
+  return (
+    <group name="debug-centering-guides">
+      <mesh name="debug-equator-ring" rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[GLOBE_RADIUS, 0.004, 8, 256]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.18} depthWrite={false} />
+      </mesh>
+
+      <line name="debug-north-south-axis">
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[axisPositions, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ffffff" transparent opacity={0.16} depthWrite={false} />
+      </line>
+
+      <mesh name="debug-north-pole-marker" position={[0, GLOBE_RADIUS, 0]}>
+        <sphereGeometry args={[0.026, 12, 12]} />
+        <meshBasicMaterial color="#dff8ff" transparent opacity={0.55} depthWrite={false} />
+      </mesh>
+
+      <mesh name="debug-south-pole-marker" position={[0, -GLOBE_RADIUS, 0]}>
+        <sphereGeometry args={[0.026, 12, 12]} />
+        <meshBasicMaterial color="#dff8ff" transparent opacity={0.55} depthWrite={false} />
+      </mesh>
+
+      <mesh name="debug-center-marker">
+        <sphereGeometry args={[0.022, 12, 12]} />
+        <meshBasicMaterial color="#fffbcc" transparent opacity={0.72} depthTest={false} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function DebugCameraTarget() {
+  const camera = useThree((state) => state.camera);
+
+  useEffect(() => {
+    if (!GLOBE_DEBUG_MODE) return;
+
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }, [camera]);
+
+  return null;
 }
 
 function OrbitalVeil({
@@ -1133,6 +1183,7 @@ function GlobeScene({
 }: GlobeSceneProps) {
   return (
     <>
+      <DebugCameraTarget />
       <ambientLight intensity={0.42} />
       <directionalLight position={[4, 3, 5]} intensity={1.8} color="#8bc3ff" />
       <pointLight position={[-3, -1.5, 3]} intensity={2.1} color="#2b6dff" />
@@ -1143,6 +1194,7 @@ function GlobeScene({
         prefersReducedMotion={prefersReducedMotion}
         isCompactViewport={isCompactViewport}
       />
+      <DebugCenteringGuides />
     </>
   );
 }
