@@ -17,7 +17,7 @@ import {
   type Group,
 } from "three";
 
-const GLOBE_DEBUG_MODE = true;
+const GLOBE_DEBUG_MODE = false;
 const IDLE_ROTATION_SPEED = 0.045;
 const CENTER_LONGITUDE = 18;
 const CENTER_LATITUDE = 3;
@@ -29,16 +29,19 @@ const DOT_SIZE = 1.48;
 const DEFAULT_ROTATION_X = 0;
 const DEFAULT_ROTATION_Y = 0;
 const DEFAULT_ROTATION_Z = 0;
-const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
-const VERTICAL_TILT_SENSITIVITY = 0.0024;
-const MIN_INSPECTION_TILT = -0.35;
-const MAX_INSPECTION_TILT = 0.35;
-const MAX_HORIZONTAL_VELOCITY = 3.2;
-const VELOCITY_SMOOTHING = 0.35;
-const MOMENTUM_FRICTION = 0.92;
+const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
+const VERTICAL_TILT_SENSITIVITY = 0.00055;
+// Vertical drag is intentionally tiny and temporary: enough tactile feedback,
+// never enough to pull the pole toward the equator or corrupt the upright Earth view.
+const MIN_INSPECTION_TILT = -0.14;
+const MAX_INSPECTION_TILT = 0.14;
+const MAX_HORIZONTAL_VELOCITY = 2.2;
+const VELOCITY_SMOOTHING = 0.28;
+const MOMENTUM_FRICTION = 0.88;
 const MOMENTUM_EPSILON = 0.0025;
 const TILT_SETTLE_EPSILON = 0.0015;
-const TILT_RETURN_SMOOTHING = 6.8;
+const TILT_RETURN_SMOOTHING = 8.4;
+const AUTO_ROTATION_RESUME_DELAY = 0.65;
 const IDLE_BLEND_START_VELOCITY = 0.16;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
@@ -1118,6 +1121,7 @@ function GlobeGroup({
   const angularVelocityRef = useRef<AngularVelocity>({ y: 0 });
   const interactionStateRef = useRef<InteractionState>("idle");
   const interactionEnergyRef = useRef(0);
+  const autoRotationResumeDelayRef = useRef(0);
   const setInteractionState = useCallback(
     (nextState: InteractionState) => {
       if (interactionStateRef.current === nextState) return;
@@ -1134,6 +1138,9 @@ function GlobeGroup({
   useFrame((_, delta) => {
     if (!yawGroupRef.current || !tiltGroupRef.current) return;
     if (GLOBE_DEBUG_MODE) return;
+
+    yawGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
+    tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
 
     const velocity = angularVelocityRef.current;
     const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON;
@@ -1175,9 +1182,12 @@ function GlobeGroup({
     }
 
     tiltGroupRef.current.rotation.x = dampValue(currentTilt, 0, TILT_RETURN_SMOOTHING, delta);
+    autoRotationResumeDelayRef.current = Math.max(0, autoRotationResumeDelayRef.current - delta);
 
     const idleSpeed = prefersReducedMotion ? REDUCED_MOTION_IDLE_SPEED : IDLE_ROTATION_SPEED;
-    yawGroupRef.current.rotation.y += delta * idleSpeed * getIdleBlend(velocity.y);
+    if (autoRotationResumeDelayRef.current <= 0) {
+      yawGroupRef.current.rotation.y += delta * idleSpeed * getIdleBlend(velocity.y);
+    }
   });
 
   const stopDrag = useCallback(() => {
@@ -1191,6 +1201,7 @@ function GlobeGroup({
     activePointerTargetRef.current = null;
     activePointerIdRef.current = null;
     previousPointerRef.current = null;
+    autoRotationResumeDelayRef.current = AUTO_ROTATION_RESUME_DELAY;
     onDraggingChange(false);
   }, [onDraggingChange]);
 
@@ -1218,6 +1229,8 @@ function GlobeGroup({
         MIN_INSPECTION_TILT,
         MAX_INSPECTION_TILT,
       );
+      yawGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
+      tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
 
       const velocityScale = 1000 / deltaTime;
       const nextVelocityY = clamp(
@@ -1258,6 +1271,9 @@ function GlobeGroup({
       activePointerTargetRef.current = event.nativeEvent.target as Element;
       activePointerTargetRef.current.setPointerCapture?.(event.pointerId);
       angularVelocityRef.current = { y: 0 };
+      autoRotationResumeDelayRef.current = AUTO_ROTATION_RESUME_DELAY;
+      if (yawGroupRef.current) yawGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
+      if (tiltGroupRef.current) tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
       setInteractionState("dragging");
       previousPointerRef.current = {
         x: event.clientX,
