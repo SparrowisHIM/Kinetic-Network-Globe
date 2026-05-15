@@ -14,8 +14,9 @@ import {
   type Group,
 } from "three";
 
+const GLOBE_DEBUG_MODE = true;
 const IDLE_ROTATION_SPEED = 0.045;
-const GLOBE_DISPLAY_TILT = -0.18;
+const GLOBE_DISPLAY_TILT = GLOBE_DEBUG_MODE ? 0 : -0.18;
 const INITIAL_GLOBE_YAW = 0.08;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
 const VERTICAL_TILT_SENSITIVITY = 0.0024;
@@ -963,6 +964,7 @@ function GlobeGroup({
 
   useFrame((_, delta) => {
     if (!yawGroupRef.current || !tiltGroupRef.current) return;
+    if (GLOBE_DEBUG_MODE) return;
 
     const velocity = angularVelocityRef.current;
     const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON;
@@ -1077,6 +1079,8 @@ function GlobeGroup({
 
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
+      if (GLOBE_DEBUG_MODE) return;
+
       event.stopPropagation();
       event.nativeEvent.preventDefault();
 
@@ -1100,7 +1104,7 @@ function GlobeGroup({
     <group
       name="main-globe-orientation-group"
       rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
-      onPointerDown={handlePointerDown}
+      onPointerDown={GLOBE_DEBUG_MODE ? undefined : handlePointerDown}
     >
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, INITIAL_GLOBE_YAW, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
@@ -1148,7 +1152,9 @@ export function GlobeComponent() {
 
   return (
     <section
-      className={`globe-section is-${interactionState}${isDragging ? " is-dragging" : ""}`}
+      className={`globe-section is-${interactionState}${isDragging ? " is-dragging" : ""}${
+        GLOBE_DEBUG_MODE ? " is-debug" : ""
+      }`}
       aria-label="Interactive dotted Earth globe"
     >
       <div className="globe-ambient" aria-hidden="true" />

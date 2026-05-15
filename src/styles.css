@@ -248,6 +248,11 @@ body {
   -webkit-user-select: none;
 }
 
+.globe-section.is-debug .globe-stage {
+  cursor: default;
+  touch-action: auto;
+}
+
 @keyframes stat-scan {
   0% {
     transform: translateX(-80%);
