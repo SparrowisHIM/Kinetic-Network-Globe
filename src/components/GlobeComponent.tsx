@@ -495,13 +495,13 @@ function DigitalGlobeSurface() {
       vec3 viewNormal = normalize(normalMatrix * normalize(position));
       // viewNormal.z is strongest at the camera-facing center of the sphere.
       // It lets front dots read brightly while rim/back dots fall away.
-      vFacing = smoothstep(0.04, 0.9, viewNormal.z);
-      vEdgeFade = smoothstep(-0.02, 0.34, viewNormal.z);
+      vFacing = smoothstep(0.0, 0.74, viewNormal.z);
+      vEdgeFade = smoothstep(-0.04, 0.26, viewNormal.z);
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.42, 1.08, vFacing);
+      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.48, 1.08, vFacing);
     }
   `;
 
@@ -519,9 +519,10 @@ function DigitalGlobeSurface() {
       float distanceFromCenter = length(point);
       float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
-      float frontLight = smoothstep(0.08, 1.0, vFacing);
-      float alpha = dotMask * vEdgeFade * mix(0.0, 1.0, frontLight) * mix(0.84, 1.0, vSeed);
-      vec3 edgeColor = uInnerColor * 0.64;
+      float frontLight = smoothstep(0.04, 1.0, vFacing);
+      float visibleSideLight = mix(0.26, 1.0, frontLight);
+      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.84, 1.0, vSeed);
+      vec3 edgeColor = uInnerColor * 0.82;
       vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.72 + frontLight * 0.36);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
@@ -534,7 +535,7 @@ function DigitalGlobeSurface() {
     <group>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 0.985, 96, 96]} />
-        <meshBasicMaterial color="#020915" transparent opacity={0.7} depthWrite />
+        <meshBasicMaterial color="#020915" transparent opacity={0.64} depthWrite />
       </mesh>
 
       <SurfaceGrid />
@@ -553,7 +554,7 @@ function DigitalGlobeSurface() {
 
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 1.01, 96, 96]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.026} depthWrite={false} />
+        <meshBasicMaterial color="#1f8fff" transparent opacity={0.052} depthWrite={false} />
       </mesh>
 
       <RimAtmosphere />
@@ -566,7 +567,7 @@ function SurfaceGrid() {
     const materialOptions = {
       color: "#2a9fff",
       transparent: true,
-      opacity: 0.045,
+      opacity: 0.068,
       depthTest: true,
       depthWrite: false,
       blending: AdditiveBlending,
