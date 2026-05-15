@@ -17,6 +17,7 @@ import { feature } from "topojson-client";
 
 const IDLE_ROTATION_SPEED = 0.045;
 const GLOBE_DISPLAY_TILT = -0.18;
+const INITIAL_GLOBE_YAW = 0.08;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
 const VERTICAL_TILT_SENSITIVITY = 0.0024;
 const MIN_INSPECTION_TILT = -0.35;
@@ -1354,7 +1355,7 @@ function GlobeGroup({
       rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
       onPointerDown={handlePointerDown}
     >
-      <group ref={yawGroupRef} name="main-globe-yaw-group">
+      <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, INITIAL_GLOBE_YAW, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface
             interactionEnergyRef={interactionEnergyRef}
