@@ -1,6 +1,6 @@
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { generateLandDots } from "../utils/generateLandDots";
+import landDotsData from "../data/landDots.json";
 import {
   AdditiveBlending,
   BufferGeometry,
@@ -32,10 +32,6 @@ const IDLE_BLEND_START_VELOCITY = 0.16;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
-const DESKTOP_LONGITUDE_STEP = 1.55;
-const COMPACT_LONGITUDE_STEP = 1.65;
-const DESKTOP_LATITUDE_STEP = 1.55;
-const COMPACT_LATITUDE_STEP = 1.65;
 const GLOBE_RADIUS = 2.4;
 const LAND_DOT_POINT_SIZE = 2.05;
 const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
@@ -103,6 +99,12 @@ type NetworkNode = {
   longitude: number;
   status: RouteStatus;
   routeCount: number;
+};
+
+type LandDotsData = {
+  radius: number;
+  source: string;
+  dots: [number, number, number, number][];
 };
 
 const GLOBAL_ROUTES: GlobeRoute[] = [
@@ -399,36 +401,26 @@ function RimAtmosphere() {
   );
 }
 
-function DigitalGlobeSurface({
-  longitudeStep,
-  latitudeStep,
-}: {
-  longitudeStep: number;
-  latitudeStep: number;
-}) {
+function DigitalGlobeSurface() {
   const landGeometry = useMemo(() => {
-    const dots = generateLandDots({
-      radius: GLOBE_RADIUS,
-      longitudeStep,
-      latitudeStep,
-    });
+    const dots = (landDotsData as unknown as LandDotsData).dots;
     const positions = new Float32Array(dots.length * 3);
     const seeds = new Float32Array(dots.length);
     const geometry = new BufferGeometry();
 
     dots.forEach((dot, index) => {
       const positionIndex = index * 3;
-      positions[positionIndex] = dot.x;
-      positions[positionIndex + 1] = dot.y;
-      positions[positionIndex + 2] = dot.z;
-      seeds[index] = dot.seed;
+      positions[positionIndex] = dot[0];
+      positions[positionIndex + 1] = dot[1];
+      positions[positionIndex + 2] = dot[2];
+      seeds[index] = dot[3];
     });
 
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
 
     return geometry;
-  }, [latitudeStep, longitudeStep]);
+  }, []);
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
@@ -941,14 +933,6 @@ function GlobeGroup({
   const angularVelocityRef = useRef<AngularVelocity>({ y: 0 });
   const interactionStateRef = useRef<InteractionState>("idle");
   const interactionEnergyRef = useRef(0);
-  const surfaceSampleSteps = useMemo(
-    () => ({
-      longitude: isCompactViewport ? COMPACT_LONGITUDE_STEP : DESKTOP_LONGITUDE_STEP,
-      latitude: isCompactViewport ? COMPACT_LATITUDE_STEP : DESKTOP_LATITUDE_STEP,
-    }),
-    [isCompactViewport],
-  );
-
   const setInteractionState = useCallback(
     (nextState: InteractionState) => {
       if (interactionStateRef.current === nextState) return;
@@ -1108,10 +1092,7 @@ function GlobeGroup({
     >
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, INITIAL_GLOBE_YAW, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
-          <DigitalGlobeSurface
-            longitudeStep={surfaceSampleSteps.longitude}
-            latitudeStep={surfaceSampleSteps.latitude}
-          />
+          <DigitalGlobeSurface />
         </group>
       </group>
     </group>
