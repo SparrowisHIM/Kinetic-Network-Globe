@@ -249,6 +249,40 @@ function logLandDotYBounds(minY: number, maxY: number, yTotal: number, count: nu
   });
 }
 
+function createLandDotGeometry(landPoints: LandPoint[]) {
+  const maxPositionCount = landPoints.length * 3;
+  const positions = new Float32Array(maxPositionCount);
+  const seeds = new Float32Array(landPoints.length);
+  const geometry = new BufferGeometry();
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let yTotal = 0;
+  let visiblePointCount = 0;
+
+  landPoints.forEach((point) => {
+    const position = landPointToSpherePosition(point);
+
+    if (!position.visible) return;
+
+    const positionIndex = visiblePointCount * 3;
+    positions[positionIndex] = position.x;
+    positions[positionIndex + 1] = position.y;
+    positions[positionIndex + 2] = position.z;
+    seeds[visiblePointCount] = getLandPointSeed(point);
+    minY = Math.min(minY, position.y);
+    maxY = Math.max(maxY, position.y);
+    yTotal += position.y;
+    visiblePointCount += 1;
+  });
+
+  logLandDotYBounds(minY, maxY, yTotal, visiblePointCount);
+
+  geometry.setAttribute("position", new Float32BufferAttribute(positions.subarray(0, visiblePointCount * 3), 3));
+  geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds.subarray(0, visiblePointCount), 1));
+
+  return geometry;
+}
+
 function createRouteCurve(route: GlobeRoute) {
   const start = latLngToSpherePosition(route.startLat, route.startLng);
   const end = latLngToSpherePosition(route.endLat, route.endLng);
@@ -440,33 +474,8 @@ function DigitalGlobeSurface() {
       latitudeStep: DOT_SPACING,
       jitter: DOT_JITTER,
     });
-    const positions: number[] = [];
-    const seeds: number[] = [];
-    const geometry = new BufferGeometry();
-    let minY = Infinity;
-    let maxY = -Infinity;
-    let yTotal = 0;
-    let visiblePointCount = 0;
 
-    landPoints.forEach((point) => {
-      const position = landPointToSpherePosition(point);
-
-      if (!position.visible) return;
-
-      positions.push(position.x, position.y, position.z);
-      minY = Math.min(minY, position.y);
-      maxY = Math.max(maxY, position.y);
-      yTotal += position.y;
-      seeds.push(getLandPointSeed(point));
-      visiblePointCount += 1;
-    });
-
-    logLandDotYBounds(minY, maxY, yTotal, visiblePointCount);
-
-    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
-    geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
-
-    return geometry;
+    return createLandDotGeometry(landPoints);
   }, []);
   const landUniforms = useMemo(
     () => ({

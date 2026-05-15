@@ -31,6 +31,7 @@ const DEFAULT_OPTIONS = {
 const landTopology = land110mTopology as unknown as Topology;
 const landObject = landTopology.objects.land as GeometryObject;
 const landGeoJson = feature(landTopology, landObject) as GeoPermissibleObjects;
+const landPointCache = new Map<string, LandPoint[]>();
 
 function createSeededRandom(seed: number) {
   let value = seed >>> 0;
@@ -54,6 +55,10 @@ function getLongitudeStepForLatitude(latitude: number, baseLongitudeStep: number
   return baseLongitudeStep / Math.max(Math.cos(latRad), 0.25);
 }
 
+function getLandPointCacheKey(options: Required<LandPointOptions>) {
+  return JSON.stringify(options);
+}
+
 export function generateLandPoints(options: LandPointOptions = {}): LandPoint[] {
   const {
     longitudeStep,
@@ -66,6 +71,18 @@ export function generateLandPoints(options: LandPointOptions = {}): LandPoint[] 
     ...DEFAULT_OPTIONS,
     ...options,
   };
+  const cacheKey = getLandPointCacheKey({
+    longitudeStep,
+    latitudeStep,
+    jitter,
+    minLatitude,
+    maxLatitude,
+    seed,
+  });
+  const cachedPoints = landPointCache.get(cacheKey);
+
+  if (cachedPoints) return cachedPoints;
+
   const random = createSeededRandom(seed);
   const points: LandPoint[] = [];
 
@@ -86,6 +103,8 @@ export function generateLandPoints(options: LandPointOptions = {}): LandPoint[] 
       });
     }
   }
+
+  landPointCache.set(cacheKey, points);
 
   return points;
 }
