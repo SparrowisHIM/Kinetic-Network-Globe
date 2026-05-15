@@ -24,8 +24,11 @@ const CENTER_LATITUDE = 3;
 const DOT_SPACING = 1;
 const DOT_JITTER = DOT_SPACING * 0.14;
 const DOT_SIZE = 1.48;
-const GLOBE_DISPLAY_TILT = 0;
-const INITIAL_GLOBE_YAW = 0;
+// Keep the default vertical tilt neutral so the land matrix does not feel pushed upward.
+// The Africa/Europe starting view is selected by CENTER_LONGITUDE and the y-axis orientation.
+const DEFAULT_ROTATION_X = 0;
+const DEFAULT_ROTATION_Y = 0;
+const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
 const VERTICAL_TILT_SENSITIVITY = 0.0024;
 const MIN_INSPECTION_TILT = -0.35;
@@ -1270,10 +1273,10 @@ function GlobeGroup({
     <group
       name="main-globe-orientation-group"
       position={[0, 0, 0]}
-      rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
+      rotation={[DEFAULT_ROTATION_X, 0, DEFAULT_ROTATION_Z]}
       onPointerDown={GLOBE_DEBUG_MODE ? undefined : handlePointerDown}
     >
-      <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, INITIAL_GLOBE_YAW, 0]}>
+      <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, DEFAULT_ROTATION_Y, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface />
         </group>
