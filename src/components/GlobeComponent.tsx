@@ -1,7 +1,7 @@
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
-import { projectLonLatToOrthographicSphere, projectLonLatToSphere } from "../utils/sphereProjection";
+import { projectLonLatToSphere } from "../utils/sphereProjection";
 import {
   AdditiveBlending,
   BufferGeometry,
@@ -27,7 +27,7 @@ const DOT_SIZE = 1.56;
 // Keep the default vertical tilt neutral so the land matrix does not feel pushed upward.
 // The Africa/Europe starting view is selected by CENTER_LONGITUDE and the y-axis orientation.
 const DEFAULT_ROTATION_X = 0;
-const DEFAULT_ROTATION_Y = 0;
+const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
 const VERTICAL_TILT_SENSITIVITY = 0.00055;
@@ -58,11 +58,6 @@ const INTERACTION_ENERGY_EASING = 5.8;
 const REDUCED_MOTION_IDLE_SPEED = 0.008;
 const REDUCED_MOTION_PULSE_SPEED_MULTIPLIER = 1.85;
 const COMPACT_MEDIA_QUERY = "(max-width: 640px), (max-height: 620px)";
-const GLOBE_PROJECTION = {
-  centerLon: CENTER_LONGITUDE,
-  centerLat: CENTER_LATITUDE,
-  radius: GLOBE_RADIUS,
-};
 const SURFACE_GRID_LAT_STEP = 15;
 const SURFACE_GRID_LON_STEP = 15;
 const SURFACE_GRID_SEGMENT_STEP = 2;
@@ -229,10 +224,7 @@ function latLngToSpherePosition(latitude: number, longitude: number, radius = RO
 }
 
 function landPointToSpherePosition(point: LandPoint, radius = GLOBE_RADIUS) {
-  return projectLonLatToOrthographicSphere(point, {
-    ...GLOBE_PROJECTION,
-    radius,
-  });
+  return projectLonLatToSphere(point, radius);
 }
 
 function getLandPointSeed(point: LandPoint) {
@@ -259,35 +251,30 @@ function logLandDotYBounds(minY: number, maxY: number, yTotal: number, count: nu
 }
 
 function createLandDotGeometry(landPoints: LandPoint[]) {
-  const maxPositionCount = landPoints.length * 3;
-  const positions = new Float32Array(maxPositionCount);
+  const positions = new Float32Array(landPoints.length * 3);
   const seeds = new Float32Array(landPoints.length);
   const geometry = new BufferGeometry();
   let minY = Infinity;
   let maxY = -Infinity;
   let yTotal = 0;
-  let visiblePointCount = 0;
 
-  landPoints.forEach((point) => {
+  landPoints.forEach((point, index) => {
     const position = landPointToSpherePosition(point);
 
-    if (!position.visible) return;
-
-    const positionIndex = visiblePointCount * 3;
+    const positionIndex = index * 3;
     positions[positionIndex] = position.x;
     positions[positionIndex + 1] = position.y;
     positions[positionIndex + 2] = position.z;
-    seeds[visiblePointCount] = getLandPointSeed(point);
+    seeds[index] = getLandPointSeed(point);
     minY = Math.min(minY, position.y);
     maxY = Math.max(maxY, position.y);
     yTotal += position.y;
-    visiblePointCount += 1;
   });
 
-  logLandDotYBounds(minY, maxY, yTotal, visiblePointCount);
+  logLandDotYBounds(minY, maxY, yTotal, landPoints.length);
 
-  geometry.setAttribute("position", new Float32BufferAttribute(positions.subarray(0, visiblePointCount * 3), 3));
-  geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds.subarray(0, visiblePointCount), 1));
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
 
   return geometry;
 }
@@ -547,7 +534,7 @@ function DigitalGlobeSurface() {
     <group>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 0.985, 96, 96]} />
-        <meshBasicMaterial color="#020915" transparent opacity={0.7} depthWrite={false} />
+        <meshBasicMaterial color="#020915" transparent opacity={0.7} depthWrite />
       </mesh>
 
       <SurfaceGrid />
@@ -587,7 +574,7 @@ function SurfaceGrid() {
     const lines: Line[] = [];
 
     for (let lat = -75; lat <= 75; lat += SURFACE_GRID_LAT_STEP) {
-      const geometry = createProjectedGuideGeometry(
+      const geometry = createSphericalGuideGeometry(
         createLatitudeLinePoints(lat, SURFACE_GRID_SEGMENT_STEP),
         GLOBE_RADIUS + 0.018,
       );
@@ -595,7 +582,7 @@ function SurfaceGrid() {
     }
 
     for (let lon = -180; lon < 180; lon += SURFACE_GRID_LON_STEP) {
-      const geometry = createProjectedGuideGeometry(
+      const geometry = createSphericalGuideGeometry(
         createLongitudeLinePoints(lon, SURFACE_GRID_SEGMENT_STEP),
         GLOBE_RADIUS + 0.018,
       );
@@ -629,16 +616,11 @@ function SurfaceGrid() {
   );
 }
 
-function createProjectedGuideGeometry(points: LandPoint[], radius = GLOBE_RADIUS + 0.012) {
+function createSphericalGuideGeometry(points: LandPoint[], radius = GLOBE_RADIUS + 0.012) {
   const positions: number[] = [];
 
   points.forEach((point) => {
-    const position = projectLonLatToOrthographicSphere(point, {
-      ...GLOBE_PROJECTION,
-      radius,
-    });
-
-    if (!position.visible) return;
+    const position = projectLonLatToSphere(point, radius);
 
     positions.push(position.x, position.y, position.z);
   });
@@ -670,8 +652,8 @@ function createLongitudeLinePoints(lon: number, step = 1) {
 }
 
 function DebugCenteringGuides() {
-  const equatorGeometry = useMemo(() => createProjectedGuideGeometry(createLatitudeLinePoints(0)), []);
-  const primeMeridianGeometry = useMemo(() => createProjectedGuideGeometry(createLongitudeLinePoints(0)), []);
+  const equatorGeometry = useMemo(() => createSphericalGuideGeometry(createLatitudeLinePoints(0)), []);
+  const primeMeridianGeometry = useMemo(() => createSphericalGuideGeometry(createLongitudeLinePoints(0)), []);
   const equatorLine = useMemo(
     () =>
       new Line(
@@ -701,11 +683,7 @@ function DebugCenteringGuides() {
     [primeMeridianGeometry],
   );
   const viewCenterPosition = useMemo(
-    () =>
-      projectLonLatToOrthographicSphere(
-        { lon: CENTER_LONGITUDE, lat: CENTER_LATITUDE },
-        { ...GLOBE_PROJECTION, radius: GLOBE_RADIUS + 0.018 },
-      ),
+    () => projectLonLatToSphere({ lon: CENTER_LONGITUDE, lat: CENTER_LATITUDE }, GLOBE_RADIUS + 0.018),
     [],
   );
 
