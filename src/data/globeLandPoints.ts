@@ -30,6 +30,7 @@ const DEFAULT_OPTIONS = {
 
 const landTopology = land110mTopology as unknown as Topology;
 const landObject = landTopology.objects.land as GeometryObject;
+// Convert world-atlas TopoJSON once, then sample against the real land polygons.
 const landGeoJson = feature(landTopology, landObject) as GeoPermissibleObjects;
 const landPointCache = new Map<string, LandPoint[]>();
 
@@ -87,6 +88,7 @@ export function generateLandPoints(options: LandPointOptions = {}): LandPoint[] 
   const points: LandPoint[] = [];
 
   for (let lat = minLatitude; lat <= maxLatitude; lat += latitudeStep) {
+    // Wider longitude spacing near the poles keeps the dotted matrix even on a sphere.
     const lonStepForLat = getLongitudeStepForLatitude(lat, longitudeStep);
     const lonJitter = Math.min(jitter, lonStepForLat * 0.18);
     const latJitter = Math.min(jitter, latitudeStep * 0.18);
