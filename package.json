@@ -24,6 +24,7 @@
     "@types/react-dom": "latest",
     "@types/three": "latest",
     "@vitejs/plugin-react": "latest",
+    "playwright": "^1.60.0",
     "typescript": "latest",
     "vite": "latest"
   }

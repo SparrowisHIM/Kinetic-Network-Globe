@@ -9,3 +9,4 @@ vite.config.d.ts
 vite.config.js
 .route-check.png
 reference-frame-*.png
+.debug-*.png
