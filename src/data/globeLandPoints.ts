@@ -48,6 +48,12 @@ function roundCoordinate(value: number) {
   return Number(value.toFixed(5));
 }
 
+function getLongitudeStepForLatitude(latitude: number, baseLongitudeStep: number) {
+  const latRad = (latitude * Math.PI) / 180;
+
+  return baseLongitudeStep / Math.max(Math.cos(latRad), 0.25);
+}
+
 export function generateLandPoints(options: LandPointOptions = {}): LandPoint[] {
   const {
     longitudeStep,
@@ -64,9 +70,13 @@ export function generateLandPoints(options: LandPointOptions = {}): LandPoint[] 
   const points: LandPoint[] = [];
 
   for (let lat = minLatitude; lat <= maxLatitude; lat += latitudeStep) {
-    for (let lon = -180; lon <= 180; lon += longitudeStep) {
-      const jitteredLon = lon + (random() - 0.5) * jitter;
-      const jitteredLat = lat + (random() - 0.5) * jitter;
+    const lonStepForLat = getLongitudeStepForLatitude(lat, longitudeStep);
+    const lonJitter = Math.min(jitter, lonStepForLat * 0.18);
+    const latJitter = Math.min(jitter, latitudeStep * 0.18);
+
+    for (let lon = -180; lon <= 180; lon += lonStepForLat) {
+      const jitteredLon = lon + (random() - 0.5) * lonJitter;
+      const jitteredLat = lat + (random() - 0.5) * latJitter;
 
       if (!geoContains(landGeoJson, [jitteredLon, jitteredLat])) continue;
 
