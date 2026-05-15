@@ -36,6 +36,8 @@ const DEFAULT_LATITUDE_STEP = 2.15;
 const DEFAULT_JITTER = 0.28;
 const DEFAULT_MIN_LATITUDE = -55;
 const DEFAULT_MAX_LATITUDE = 85;
+const generatedDotsCache = new Map<string, LandDot[]>();
+let cachedLandGeoJson: LandFeatureCollection | null = null;
 
 function createSeededRandom(seed: number) {
   let value = seed >>> 0;
@@ -50,13 +52,17 @@ function createSeededRandom(seed: number) {
 }
 
 function getLandGeoJson() {
+  if (cachedLandGeoJson) return cachedLandGeoJson;
+
   const topology = landTopology as {
     objects: {
       land: unknown;
     };
   };
 
-  return feature(landTopology as never, topology.objects.land as never) as unknown as LandFeatureCollection;
+  cachedLandGeoJson = feature(landTopology as never, topology.objects.land as never) as unknown as LandFeatureCollection;
+
+  return cachedLandGeoJson;
 }
 
 export function generateLandDots({
@@ -67,6 +73,11 @@ export function generateLandDots({
   minLatitude = DEFAULT_MIN_LATITUDE,
   maxLatitude = DEFAULT_MAX_LATITUDE,
 }: GenerateLandDotsOptions = {}) {
+  const cacheKey = [radius, longitudeStep, latitudeStep, jitter, minLatitude, maxLatitude].join(":");
+  const cachedDots = generatedDotsCache.get(cacheKey);
+
+  if (cachedDots) return cachedDots;
+
   const landGeoJson = getLandGeoJson();
   const random = createSeededRandom(1917);
   const dots: LandDot[] = [];
@@ -94,6 +105,8 @@ export function generateLandDots({
       });
     }
   }
+
+  generatedDotsCache.set(cacheKey, dots);
 
   return dots;
 }
