@@ -1,11 +1,13 @@
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
-import { projectLonLatToSphere } from "../utils/sphereProjection";
+import { projectLonLatToOrthographicSphere, projectLonLatToSphere } from "../utils/sphereProjection";
 import {
   AdditiveBlending,
   BufferGeometry,
   Float32BufferAttribute,
+  Line,
+  LineBasicMaterial,
   type Mesh,
   type MeshBasicMaterial,
   QuadraticBezierCurve3,
@@ -17,8 +19,12 @@ import {
 
 const GLOBE_DEBUG_MODE = true;
 const IDLE_ROTATION_SPEED = 0.045;
+const CENTER_LONGITUDE = 18;
+const CENTER_LATITUDE = 3;
+const DOT_SPACING = 1.45;
+const DOT_SIZE = 2.05;
 const GLOBE_DISPLAY_TILT = 0;
-const INITIAL_GLOBE_YAW = -0.35;
+const INITIAL_GLOBE_YAW = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
 const VERTICAL_TILT_SENSITIVITY = 0.0024;
 const MIN_INSPECTION_TILT = -0.35;
@@ -34,7 +40,7 @@ const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
 const GLOBE_RADIUS = 2.4;
-const LAND_DOT_POINT_SIZE = 2.05;
+const LAND_DOT_POINT_SIZE = DOT_SIZE;
 const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
 const DESKTOP_ROUTE_SEGMENTS = 96;
 const COMPACT_ROUTE_SEGMENTS = 72;
@@ -45,6 +51,11 @@ const INTERACTION_ENERGY_EASING = 5.8;
 const REDUCED_MOTION_IDLE_SPEED = 0.008;
 const REDUCED_MOTION_PULSE_SPEED_MULTIPLIER = 1.85;
 const COMPACT_MEDIA_QUERY = "(max-width: 640px), (max-height: 620px)";
+const GLOBE_PROJECTION = {
+  centerLon: CENTER_LONGITUDE,
+  centerLat: CENTER_LATITUDE,
+  radius: GLOBE_RADIUS,
+};
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -208,7 +219,10 @@ function latLngToSpherePosition(latitude: number, longitude: number, radius = RO
 }
 
 function landPointToSpherePosition(point: LandPoint, radius = GLOBE_RADIUS) {
-  return projectLonLatToSphere(point, radius);
+  return projectLonLatToOrthographicSphere(point, {
+    ...GLOBE_PROJECTION,
+    radius,
+  });
 }
 
 function getLandPointSeed(point: LandPoint) {
@@ -420,27 +434,32 @@ function RimAtmosphere() {
 
 function DigitalGlobeSurface() {
   const landGeometry = useMemo(() => {
-    const landPoints = generateLandPoints();
-    const positions = new Float32Array(landPoints.length * 3);
-    const seeds = new Float32Array(landPoints.length);
+    const landPoints = generateLandPoints({
+      longitudeStep: DOT_SPACING,
+      latitudeStep: DOT_SPACING,
+    });
+    const positions: number[] = [];
+    const seeds: number[] = [];
     const geometry = new BufferGeometry();
     let minY = Infinity;
     let maxY = -Infinity;
     let yTotal = 0;
+    let visiblePointCount = 0;
 
-    landPoints.forEach((point, index) => {
-      const positionIndex = index * 3;
+    landPoints.forEach((point) => {
       const position = landPointToSpherePosition(point);
-      positions[positionIndex] = position.x;
-      positions[positionIndex + 1] = position.y;
-      positions[positionIndex + 2] = position.z;
+
+      if (!position.visible) return;
+
+      positions.push(position.x, position.y, position.z);
       minY = Math.min(minY, position.y);
       maxY = Math.max(maxY, position.y);
       yTotal += position.y;
-      seeds[index] = getLandPointSeed(point);
+      seeds.push(getLandPointSeed(point));
+      visiblePointCount += 1;
     });
 
-    logLandDotYBounds(minY, maxY, yTotal, landPoints.length);
+    logLandDotYBounds(minY, maxY, yTotal, visiblePointCount);
 
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
@@ -525,36 +544,104 @@ function DigitalGlobeSurface() {
   );
 }
 
+function createProjectedGuideGeometry(points: LandPoint[], radius = GLOBE_RADIUS + 0.012) {
+  const positions: number[] = [];
+
+  points.forEach((point) => {
+    const position = projectLonLatToOrthographicSphere(point, {
+      ...GLOBE_PROJECTION,
+      radius,
+    });
+
+    if (!position.visible) return;
+
+    positions.push(position.x, position.y, position.z);
+  });
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+
+  return geometry;
+}
+
+function createLatitudeLinePoints(lat: number) {
+  const points: LandPoint[] = [];
+
+  for (let lon = -180; lon <= 180; lon += 1) {
+    points.push({ lon, lat });
+  }
+
+  return points;
+}
+
+function createLongitudeLinePoints(lon: number) {
+  const points: LandPoint[] = [];
+
+  for (let lat = -90; lat <= 90; lat += 1) {
+    points.push({ lon, lat });
+  }
+
+  return points;
+}
+
 function DebugCenteringGuides() {
-  const axisPositions = useMemo(() => new Float32Array([0, -GLOBE_RADIUS, 0, 0, GLOBE_RADIUS, 0]), []);
+  const equatorGeometry = useMemo(() => createProjectedGuideGeometry(createLatitudeLinePoints(0)), []);
+  const primeMeridianGeometry = useMemo(() => createProjectedGuideGeometry(createLongitudeLinePoints(0)), []);
+  const equatorLine = useMemo(
+    () =>
+      new Line(
+        equatorGeometry,
+        new LineBasicMaterial({
+          color: "#ffffff",
+          transparent: true,
+          opacity: 0.16,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      ),
+    [equatorGeometry],
+  );
+  const primeMeridianLine = useMemo(
+    () =>
+      new Line(
+        primeMeridianGeometry,
+        new LineBasicMaterial({
+          color: "#ffffff",
+          transparent: true,
+          opacity: 0.14,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      ),
+    [primeMeridianGeometry],
+  );
+  const viewCenterPosition = useMemo(
+    () =>
+      projectLonLatToOrthographicSphere(
+        { lon: CENTER_LONGITUDE, lat: CENTER_LATITUDE },
+        { ...GLOBE_PROJECTION, radius: GLOBE_RADIUS + 0.018 },
+      ),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      equatorGeometry.dispose();
+      primeMeridianGeometry.dispose();
+      equatorLine.material.dispose();
+      primeMeridianLine.material.dispose();
+    },
+    [equatorGeometry, primeMeridianGeometry, equatorLine, primeMeridianLine],
+  );
 
   if (!GLOBE_DEBUG_MODE) return null;
 
   return (
-    <group name="debug-centering-guides">
-      <mesh name="debug-equator-ring" rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[GLOBE_RADIUS, 0.004, 8, 256]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.18} depthWrite={false} />
-      </mesh>
+    <group name="debug-geographic-guides">
+      <primitive object={equatorLine} name="debug-equator-line" />
+      <primitive object={primeMeridianLine} name="debug-prime-meridian-line" />
 
-      <line name="debug-north-south-axis">
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[axisPositions, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial color="#ffffff" transparent opacity={0.16} depthWrite={false} />
-      </line>
-
-      <mesh name="debug-north-pole-marker" position={[0, GLOBE_RADIUS, 0]}>
-        <sphereGeometry args={[0.026, 12, 12]} />
-        <meshBasicMaterial color="#dff8ff" transparent opacity={0.55} depthWrite={false} />
-      </mesh>
-
-      <mesh name="debug-south-pole-marker" position={[0, -GLOBE_RADIUS, 0]}>
-        <sphereGeometry args={[0.026, 12, 12]} />
-        <meshBasicMaterial color="#dff8ff" transparent opacity={0.55} depthWrite={false} />
-      </mesh>
-
-      <mesh name="debug-center-marker">
+      <mesh name="debug-view-center-marker" position={[viewCenterPosition.x, viewCenterPosition.y, viewCenterPosition.z]}>
         <sphereGeometry args={[0.022, 12, 12]} />
         <meshBasicMaterial color="#fffbcc" transparent opacity={0.72} depthTest={false} depthWrite={false} />
       </mesh>
