@@ -17,8 +17,8 @@ import {
 
 const GLOBE_DEBUG_MODE = true;
 const IDLE_ROTATION_SPEED = 0.045;
-const GLOBE_DISPLAY_TILT = GLOBE_DEBUG_MODE ? 0 : -0.18;
-const INITIAL_GLOBE_YAW = 0.08;
+const GLOBE_DISPLAY_TILT = 0;
+const INITIAL_GLOBE_YAW = -0.35;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
 const VERTICAL_TILT_SENSITIVITY = 0.0024;
 const MIN_INSPECTION_TILT = -0.35;
@@ -1163,6 +1163,7 @@ function GlobeGroup({
   return (
     <group
       name="main-globe-orientation-group"
+      position={[0, 0, 0]}
       rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
       onPointerDown={GLOBE_DEBUG_MODE ? undefined : handlePointerDown}
     >

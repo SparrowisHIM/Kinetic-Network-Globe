@@ -23,7 +23,7 @@ const DEFAULT_OPTIONS = {
   longitudeStep: 1.55,
   latitudeStep: 1.55,
   jitter: 0.28,
-  minLatitude: -55,
+  minLatitude: -85,
   maxLatitude: 85,
   seed: 1917,
 } satisfies Required<LandPointOptions>;
@@ -79,4 +79,3 @@ export function generateLandPoints(options: LandPointOptions = {}): LandPoint[] 
 
   return points;
 }
-
