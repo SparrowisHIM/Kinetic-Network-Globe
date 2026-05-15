@@ -37,10 +37,9 @@ const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
 const DESKTOP_ROUTE_SEGMENTS = 96;
 const COMPACT_ROUTE_SEGMENTS = 72;
 const ROUTE_LONGITUDE_OFFSET = 90;
-const PULSE_LOOP_GAP = 0.48;
-const PULSE_TRAIL_OFFSET = 0.055;
+const PULSE_LOOP_GAP = 0.18;
+const PULSE_TRAIL_OFFSET = 0.038;
 const NODE_RADIUS = ROUTE_RADIUS;
-const NODE_RIPPLE_DURATION = 2.8;
 const INTERACTION_ENERGY_EASING = 5.8;
 const REDUCED_MOTION_IDLE_SPEED = 0.008;
 const REDUCED_MOTION_PULSE_SPEED_MULTIPLIER = 1.85;
@@ -88,7 +87,6 @@ type PulseGeometries = {
 };
 
 type NodeGeometries = {
-  ripple: SphereGeometry;
   glow: SphereGeometry;
   core: SphereGeometry;
 };
@@ -103,8 +101,8 @@ type NetworkNode = {
 };
 
 const NETWORK_STATS = [
-  { label: "Active Routes", value: "08" },
-  { label: "Signal Pulses", value: "24" },
+  { label: "Flow Paths", value: "08" },
+  { label: "Data Packets", value: "24" },
   { label: "Latency", value: "42ms" },
 ];
 
@@ -223,14 +221,14 @@ function createRouteCurve(route: GlobeRoute) {
   const start = latLngToSpherePosition(route.startLat, route.startLng);
   const end = latLngToSpherePosition(route.endLat, route.endLng);
   const angle = start.angleTo(end);
-  const lift = clamp(0.14 + angle * 0.12, 0.18, 0.42);
+  const lift = clamp(0.07 + angle * 0.05, 0.09, 0.2);
   const middle = start.clone().add(end).normalize().multiplyScalar(ROUTE_RADIUS + lift);
 
   return new QuadraticBezierCurve3(start, middle, end);
 }
 
 function createRouteArcGeometry(route: GlobeRoute, curve: QuadraticBezierCurve3, routeSegments: number) {
-  const tubeRadius = route.status === "primary" ? 0.009 : route.status === "active" ? 0.007 : 0.005;
+  const tubeRadius = route.status === "primary" ? 0.0046 : route.status === "active" ? 0.0035 : 0.0024;
 
   return new TubeGeometry(curve, routeSegments, tubeRadius, 8, false);
 }
@@ -242,8 +240,8 @@ function createRouteArcAsset(route: GlobeRoute, index: number, routeSegments: nu
     route,
     curve,
     geometry: createRouteArcGeometry(route, curve, routeSegments),
-    pulseDuration: route.status === "primary" ? 3.6 + index * 0.08 : route.status === "active" ? 4.25 : 5.15,
-    pulseDelay: index * 0.43 + (route.status === "quiet" ? 0.7 : 0),
+    pulseDuration: route.status === "primary" ? 4.45 + index * 0.08 : route.status === "active" ? 5.2 : 6.1,
+    pulseDelay: index * 0.34 + (route.status === "quiet" ? 0.5 : 0),
   };
 }
 
@@ -299,35 +297,29 @@ function extractNetworkNodes(routes: GlobeRoute[]) {
 }
 
 function getRouteOpacity(status: RouteStatus) {
-  if (status === "primary") return 0.58;
-  if (status === "active") return 0.42;
-  return 0.26;
+  if (status === "primary") return 0.34;
+  if (status === "active") return 0.24;
+  return 0.14;
 }
 
 function getRouteGlowOpacity(status: RouteStatus) {
-  if (status === "primary") return 0.18;
-  if (status === "active") return 0.13;
-  return 0.09;
+  if (status === "primary") return 0.075;
+  if (status === "active") return 0.052;
+  return 0.034;
 }
 
 function getPulseScale(status: RouteStatus) {
-  if (status === "primary") return 0.034;
-  if (status === "active") return 0.029;
-  return 0.024;
+  if (status === "primary") return 0.014;
+  if (status === "active") return 0.0115;
+  return 0.009;
 }
 
 function getNodeScale(node: NetworkNode) {
-  const connectionWeight = Math.min(node.routeCount - 1, 2) * 0.004;
+  const connectionWeight = Math.min(node.routeCount - 1, 2) * 0.0025;
 
-  if (node.status === "primary") return 0.038 + connectionWeight;
-  if (node.status === "active") return 0.032 + connectionWeight;
-  return 0.026 + connectionWeight;
-}
-
-function getNodeRippleOpacity(status: RouteStatus) {
-  if (status === "primary") return 0.22;
-  if (status === "active") return 0.16;
-  return 0.1;
+  if (node.status === "primary") return 0.024 + connectionWeight;
+  if (node.status === "active") return 0.02 + connectionWeight;
+  return 0.016 + connectionWeight;
 }
 
 function getMomentumEnergy(velocity: AngularVelocity) {
@@ -562,9 +554,11 @@ function RoutePulse({
   const coreRef = useRef<Mesh>(null);
   const glowRef = useRef<Mesh>(null);
   const trailRef = useRef<Mesh>(null);
+  const secondTrailRef = useRef<Mesh>(null);
   const coreMaterialRef = useRef<MeshBasicMaterial>(null);
   const glowMaterialRef = useRef<MeshBasicMaterial>(null);
   const trailMaterialRef = useRef<MeshBasicMaterial>(null);
+  const secondTrailMaterialRef = useRef<MeshBasicMaterial>(null);
   const baseScale = getPulseScale(asset.route.status);
 
   useFrame(({ clock }) => {
@@ -582,34 +576,43 @@ function RoutePulse({
       if (coreRef.current) coreRef.current.visible = false;
       if (glowRef.current) glowRef.current.visible = false;
       if (trailRef.current) trailRef.current.visible = false;
+      if (secondTrailRef.current) secondTrailRef.current.visible = false;
       return;
     }
 
     const pulsePosition = asset.curve.getPointAt(progress);
     const trailPosition = asset.curve.getPointAt(clamp(progress - PULSE_TRAIL_OFFSET, 0, 1));
-    const shimmer = 1 + Math.sin(clock.elapsedTime * 5.2 + asset.pulseDelay) * 0.08;
+    const secondTrailPosition = asset.curve.getPointAt(clamp(progress - PULSE_TRAIL_OFFSET * 2.15, 0, 1));
+    const shimmer = 1 + Math.sin(clock.elapsedTime * 3.2 + asset.pulseDelay) * 0.045;
 
     if (coreRef.current) {
       coreRef.current.visible = true;
       coreRef.current.position.copy(pulsePosition);
-      coreRef.current.scale.setScalar(baseScale * shimmer * (1 + energy * 0.14));
+      coreRef.current.scale.setScalar(baseScale * shimmer * (1 + energy * 0.08));
     }
 
     if (glowRef.current) {
       glowRef.current.visible = true;
       glowRef.current.position.copy(pulsePosition);
-      glowRef.current.scale.setScalar(baseScale * 2.7 * shimmer * (1 + energy * 0.18));
+      glowRef.current.scale.setScalar(baseScale * 3.8 * shimmer * (1 + energy * 0.1));
     }
 
     if (trailRef.current) {
       trailRef.current.visible = true;
       trailRef.current.position.copy(trailPosition);
-      trailRef.current.scale.setScalar(baseScale * 1.45 * visibility);
+      trailRef.current.scale.setScalar(baseScale * 0.82 * visibility);
     }
 
-    if (coreMaterialRef.current) coreMaterialRef.current.opacity = (0.88 + energy * 0.08) * visibility;
-    if (glowMaterialRef.current) glowMaterialRef.current.opacity = (0.2 + energy * 0.1) * visibility;
-    if (trailMaterialRef.current) trailMaterialRef.current.opacity = (0.18 + energy * 0.06) * visibility;
+    if (secondTrailRef.current) {
+      secondTrailRef.current.visible = true;
+      secondTrailRef.current.position.copy(secondTrailPosition);
+      secondTrailRef.current.scale.setScalar(baseScale * 0.54 * visibility);
+    }
+
+    if (coreMaterialRef.current) coreMaterialRef.current.opacity = (0.72 + energy * 0.05) * visibility;
+    if (glowMaterialRef.current) glowMaterialRef.current.opacity = (0.07 + energy * 0.03) * visibility;
+    if (trailMaterialRef.current) trailMaterialRef.current.opacity = (0.26 + energy * 0.04) * visibility;
+    if (secondTrailMaterialRef.current) secondTrailMaterialRef.current.opacity = (0.12 + energy * 0.03) * visibility;
   });
 
   return (
@@ -617,9 +620,20 @@ function RoutePulse({
       <mesh ref={trailRef} geometry={pulseGeometries.trail}>
         <meshBasicMaterial
           ref={trailMaterialRef}
-          color="#6ad9ff"
+          color="#86e7ff"
           transparent
-          opacity={0.18}
+          opacity={0.2}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+      <mesh ref={secondTrailRef} geometry={pulseGeometries.trail}>
+        <meshBasicMaterial
+          ref={secondTrailMaterialRef}
+          color="#64c9ff"
+          transparent
+          opacity={0.1}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -628,9 +642,9 @@ function RoutePulse({
       <mesh ref={glowRef} geometry={pulseGeometries.glow}>
         <meshBasicMaterial
           ref={glowMaterialRef}
-          color="#58d5ff"
+          color="#7de4ff"
           transparent
-          opacity={0.2}
+          opacity={0.07}
           depthTest={false}
           depthWrite={false}
           blending={AdditiveBlending}
@@ -639,9 +653,9 @@ function RoutePulse({
       <mesh ref={coreRef} geometry={pulseGeometries.core}>
         <meshBasicMaterial
           ref={coreMaterialRef}
-          color="#d9fbff"
+          color="#f1fdff"
           transparent
-          opacity={0.88}
+          opacity={0.72}
           depthWrite={false}
           blending={AdditiveBlending}
         />
@@ -665,66 +679,40 @@ function NetworkNodeMarker({
 }) {
   const coreRef = useRef<Mesh>(null);
   const glowRef = useRef<Mesh>(null);
-  const rippleRef = useRef<Mesh>(null);
   const coreMaterialRef = useRef<MeshBasicMaterial>(null);
   const glowMaterialRef = useRef<MeshBasicMaterial>(null);
   const position = useMemo(() => latLngToSpherePosition(node.latitude, node.longitude, NODE_RADIUS), [node]);
   const baseScale = getNodeScale(node);
-  const rippleOpacity = getNodeRippleOpacity(node.status);
 
   useFrame(({ clock }) => {
     const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
-    const rippleTime = (clock.elapsedTime + index * 0.36) % NODE_RIPPLE_DURATION;
-    const rippleProgress = rippleTime / NODE_RIPPLE_DURATION;
-    const rippleFade =
-      (1 - smoothstep(0.32, 1, rippleProgress)) * smoothstep(0, 0.12, rippleProgress) * (prefersReducedMotion ? 0.35 : 1);
-    const breathing = prefersReducedMotion ? 1 : 1 + Math.sin(clock.elapsedTime * 1.7 + index) * 0.045;
+    const breathing = prefersReducedMotion ? 1 : 1 + Math.sin(clock.elapsedTime * 1.25 + index) * 0.026;
 
     if (coreRef.current) {
-      coreRef.current.scale.setScalar(baseScale * breathing * (1 + energy * 0.1));
+      coreRef.current.scale.setScalar(baseScale * breathing * (1 + energy * 0.06));
     }
 
     if (glowRef.current) {
-      glowRef.current.scale.setScalar(baseScale * 2.25 * breathing * (1 + energy * 0.2));
-    }
-
-    if (rippleRef.current) {
-      rippleRef.current.scale.setScalar(baseScale * (2.2 + rippleProgress * 4.2));
-      const material = rippleRef.current.material;
-
-      if (!Array.isArray(material)) {
-        material.opacity = rippleOpacity * rippleFade;
-      }
+      glowRef.current.scale.setScalar(baseScale * 3.25 * breathing * (1 + energy * 0.12));
     }
 
     if (coreMaterialRef.current) {
-      coreMaterialRef.current.opacity = (node.status === "primary" ? 0.92 : 0.78) + energy * 0.07;
+      coreMaterialRef.current.opacity = (node.status === "primary" ? 0.82 : 0.64) + energy * 0.04;
     }
 
     if (glowMaterialRef.current) {
-      glowMaterialRef.current.opacity = (node.status === "primary" ? 0.28 : 0.2) + energy * 0.1;
+      glowMaterialRef.current.opacity = (node.status === "primary" ? 0.13 : 0.08) + energy * 0.035;
     }
   });
 
   return (
     <group position={position}>
-      <mesh ref={rippleRef} geometry={nodeGeometries.ripple}>
-        <meshBasicMaterial
-          color="#7ee4ff"
-          transparent
-          opacity={0}
-          depthTest
-          depthWrite={false}
-          blending={AdditiveBlending}
-          wireframe
-        />
-      </mesh>
       <mesh ref={glowRef} geometry={nodeGeometries.glow}>
         <meshBasicMaterial
           ref={glowMaterialRef}
-          color="#3fc4ff"
+          color="#7ddfff"
           transparent
-          opacity={node.status === "primary" ? 0.28 : 0.2}
+          opacity={node.status === "primary" ? 0.13 : 0.08}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -733,9 +721,9 @@ function NetworkNodeMarker({
       <mesh ref={coreRef} geometry={nodeGeometries.core}>
         <meshBasicMaterial
           ref={coreMaterialRef}
-          color={node.status === "quiet" ? "#8adfff" : "#e2fbff"}
+          color={node.status === "quiet" ? "#8adfff" : "#eafcff"}
           transparent
-          opacity={node.status === "primary" ? 0.92 : 0.78}
+          opacity={node.status === "primary" ? 0.82 : 0.64}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -755,7 +743,6 @@ function NetworkNodeLayer({
   const nodes = useMemo(() => extractNetworkNodes(GLOBAL_ROUTES), []);
   const nodeGeometries = useMemo(
     () => ({
-      ripple: new SphereGeometry(1, 18, 18),
       glow: new SphereGeometry(1, 16, 16),
       core: new SphereGeometry(1, 16, 16),
     }),
@@ -764,7 +751,6 @@ function NetworkNodeLayer({
 
   useEffect(
     () => () => {
-      nodeGeometries.ripple.dispose();
       nodeGeometries.glow.dispose();
       nodeGeometries.core.dispose();
     },
@@ -823,7 +809,7 @@ function RouteArcLine({
       <mesh geometry={geometry}>
         <meshBasicMaterial
           ref={glowMaterialRef}
-          color="#4ebfff"
+          color="#68d9ff"
           transparent
           opacity={getRouteGlowOpacity(route.status)}
           depthTest={false}
@@ -834,7 +820,7 @@ function RouteArcLine({
       <mesh geometry={geometry}>
         <meshBasicMaterial
           ref={coreMaterialRef}
-          color={route.status === "primary" ? "#b8f3ff" : "#5fc8ff"}
+          color={route.status === "primary" ? "#c8f6ff" : "#74d8ff"}
           transparent
           opacity={getRouteOpacity(route.status)}
           depthTest
@@ -861,9 +847,9 @@ function RouteArcLayer({
   );
   const pulseGeometries = useMemo(
     () => ({
-      trail: new SphereGeometry(1, 12, 12),
-      glow: new SphereGeometry(1, 14, 14),
-      core: new SphereGeometry(1, 14, 14),
+      trail: new SphereGeometry(1, 10, 10),
+      glow: new SphereGeometry(1, 12, 12),
+      core: new SphereGeometry(1, 12, 12),
     }),
     [],
   );
@@ -1146,11 +1132,11 @@ export function GlobeComponent() {
         <div className="globe-copy">
           <div className="globe-status">
             <span className="globe-status-dot" />
-            Live network simulation
+            Live signal mesh
           </div>
-          <h1 id="globe-title">Kinetic Network Globe</h1>
+          <h1 id="globe-title">Orbital Signal Mesh</h1>
           <p id="globe-description">
-            A real-time orbital interface for visualizing global movement, signals, and connected systems.
+            A calm spatial interface for watching live data paths drift across a connected global surface.
           </p>
         </div>
 
@@ -1162,8 +1148,8 @@ export function GlobeComponent() {
             </div>
           ))}
           <div className="globe-stat globe-stat-wide">
-            <span>Online</span>
-            <small>Global Sync</small>
+            <span>Stable</span>
+            <small>Mesh Health</small>
           </div>
         </div>
       </div>
