@@ -463,6 +463,56 @@ function RimAtmosphere() {
   );
 }
 
+function GlassyOceanIllumination() {
+  const uniforms = useMemo(
+    () => ({
+      uBaseColor: { value: [0.04, 0.16, 0.28] },
+      uGlowColor: { value: [0.22, 0.68, 1] },
+    }),
+    [],
+  );
+
+  return (
+    <mesh>
+      <sphereGeometry args={[GLOBE_RADIUS * 1.002, 96, 96]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        blending={AdditiveBlending}
+        uniforms={uniforms}
+        vertexShader={`
+          varying float vFacing;
+          varying float vRim;
+
+          void main() {
+            vec3 viewNormal = normalize(normalMatrix * normal);
+            vFacing = clamp(viewNormal.z, 0.0, 1.0);
+            vRim = 1.0 - vFacing;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          precision highp float;
+
+          uniform vec3 uBaseColor;
+          uniform vec3 uGlowColor;
+          varying float vFacing;
+          varying float vRim;
+
+          void main() {
+            float centerGlow = smoothstep(0.08, 1.0, vFacing);
+            float rimGlow = pow(smoothstep(0.16, 1.0, vRim), 2.8);
+            float alpha = 0.018 + centerGlow * 0.032 + rimGlow * 0.024;
+            vec3 color = mix(uBaseColor, uGlowColor, centerGlow * 0.34 + rimGlow * 0.28);
+
+            gl_FragColor = vec4(color, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 function DigitalGlobeSurface() {
   const landGeometry = useMemo(() => {
     const landPoints = generateLandPoints({
@@ -535,8 +585,10 @@ function DigitalGlobeSurface() {
     <group>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 0.985, 96, 96]} />
-        <meshBasicMaterial color="#020915" transparent opacity={0.64} depthWrite />
+        <meshBasicMaterial color="#020915" depthWrite />
       </mesh>
+
+      <GlassyOceanIllumination />
 
       <SurfaceGrid />
 
@@ -554,7 +606,7 @@ function DigitalGlobeSurface() {
 
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 1.01, 96, 96]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.052} depthWrite={false} />
+        <meshBasicMaterial color="#1f8fff" transparent opacity={0.04} depthWrite={false} />
       </mesh>
 
       <RimAtmosphere />
