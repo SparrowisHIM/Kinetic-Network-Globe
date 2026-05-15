@@ -16,15 +16,15 @@ import {
 const IDLE_ROTATION_SPEED = 0.045;
 const GLOBE_DISPLAY_TILT = -0.18;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
-const VERTICAL_DRAG_SENSITIVITY = 0.003;
-const MIN_VERTICAL_ROTATION = -0.72;
-const MAX_VERTICAL_ROTATION = 0.48;
+const VERTICAL_TILT_SENSITIVITY = 0.0024;
+const MIN_INSPECTION_TILT = -0.35;
+const MAX_INSPECTION_TILT = 0.35;
 const MAX_HORIZONTAL_VELOCITY = 3.2;
-const MAX_VERTICAL_VELOCITY = 1.25;
 const VELOCITY_SMOOTHING = 0.35;
 const MOMENTUM_FRICTION = 0.92;
-const VERTICAL_MOMENTUM_FRICTION = 0.86;
 const MOMENTUM_EPSILON = 0.0025;
+const TILT_SETTLE_EPSILON = 0.0015;
+const TILT_RETURN_SMOOTHING = 8.5;
 const IDLE_BLEND_START_VELOCITY = 0.16;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
@@ -186,7 +186,6 @@ type PointerPosition = {
 };
 
 type AngularVelocity = {
-  x: number;
   y: number;
 };
 
@@ -323,7 +322,7 @@ function getNodeScale(node: NetworkNode) {
 }
 
 function getMomentumEnergy(velocity: AngularVelocity) {
-  const velocityStrength = Math.hypot(velocity.y / MAX_HORIZONTAL_VELOCITY, velocity.x / MAX_VERTICAL_VELOCITY);
+  const velocityStrength = Math.abs(velocity.y / MAX_HORIZONTAL_VELOCITY);
   return clamp(velocityStrength * 1.35, 0, 0.72);
 }
 
@@ -974,12 +973,13 @@ function GlobeGroup({
   prefersReducedMotion,
   isCompactViewport,
 }: GlobeSceneProps) {
-  const globeRef = useRef<Group>(null);
+  const yawGroupRef = useRef<Group>(null);
+  const tiltGroupRef = useRef<Group>(null);
   const isDraggingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
   const activePointerTargetRef = useRef<Element | null>(null);
   const previousPointerRef = useRef<PointerPosition | null>(null);
-  const angularVelocityRef = useRef<AngularVelocity>({ x: 0, y: 0 });
+  const angularVelocityRef = useRef<AngularVelocity>({ y: 0 });
   const interactionStateRef = useRef<InteractionState>("idle");
   const interactionEnergyRef = useRef(0);
 
@@ -997,16 +997,25 @@ function GlobeGroup({
   }, [onInteractionStateChange]);
 
   useFrame((_, delta) => {
-    if (!globeRef.current) return;
+    if (!yawGroupRef.current || !tiltGroupRef.current) return;
+
+    const velocity = angularVelocityRef.current;
+    const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON;
+
     if (isDraggingRef.current) {
       const dragEnergy = prefersReducedMotion ? 0.42 : 1;
       interactionEnergyRef.current = dampValue(interactionEnergyRef.current, dragEnergy, INTERACTION_ENERGY_EASING, delta);
       return;
     }
 
-    const velocity = angularVelocityRef.current;
-    const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON || Math.abs(velocity.x) > MOMENTUM_EPSILON;
-    const targetEnergy = hasMomentum ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1) : 0;
+    const currentTilt = tiltGroupRef.current.rotation.x;
+    const settlingTilt = Math.abs(currentTilt) > TILT_SETTLE_EPSILON;
+    const targetEnergy = hasMomentum
+      ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1)
+      : settlingTilt
+        ? clamp(Math.abs(currentTilt) / MAX_INSPECTION_TILT, 0, 1) * 0.18
+        : 0;
+
     interactionEnergyRef.current = dampValue(
       interactionEnergyRef.current,
       targetEnergy,
@@ -1016,36 +1025,23 @@ function GlobeGroup({
 
     if (hasMomentum) {
       setInteractionState("momentum");
-    } else if (interactionEnergyRef.current > 0.025) {
+    } else if (settlingTilt || interactionEnergyRef.current > 0.025) {
       setInteractionState("settling");
     } else {
       setInteractionState("idle");
     }
 
     if (hasMomentum) {
-      globeRef.current.rotation.y += velocity.y * delta;
-      globeRef.current.rotation.x = clamp(
-        globeRef.current.rotation.x + velocity.x * delta,
-        MIN_VERTICAL_ROTATION,
-        MAX_VERTICAL_ROTATION,
-      );
-
-      if (
-        globeRef.current.rotation.x === MIN_VERTICAL_ROTATION ||
-        globeRef.current.rotation.x === MAX_VERTICAL_ROTATION
-      ) {
-        velocity.x = 0;
-      }
-
+      yawGroupRef.current.rotation.y += velocity.y * delta;
       velocity.y = dampVelocity(velocity.y, MOMENTUM_FRICTION, delta);
-      velocity.x = dampVelocity(velocity.x, VERTICAL_MOMENTUM_FRICTION, delta);
     } else {
       velocity.y = 0;
-      velocity.x = 0;
     }
 
+    tiltGroupRef.current.rotation.x = dampValue(currentTilt, 0, TILT_RETURN_SMOOTHING, delta);
+
     const idleSpeed = prefersReducedMotion ? REDUCED_MOTION_IDLE_SPEED : IDLE_ROTATION_SPEED;
-    globeRef.current.rotation.y += delta * idleSpeed * getIdleBlend(velocity.y);
+    yawGroupRef.current.rotation.y += delta * idleSpeed * getIdleBlend(velocity.y);
   });
 
   const stopDrag = useCallback(() => {
@@ -1066,7 +1062,7 @@ function GlobeGroup({
     function handlePointerMove(event: PointerEvent) {
       if (!isDraggingRef.current) return;
       if (activePointerIdRef.current !== event.pointerId) return;
-      if (!globeRef.current || !previousPointerRef.current) return;
+      if (!yawGroupRef.current || !tiltGroupRef.current || !previousPointerRef.current) return;
 
       event.preventDefault();
 
@@ -1080,11 +1076,11 @@ function GlobeGroup({
       const clampedDeltaX = clamp(deltaX, -MAX_POINTER_DELTA, MAX_POINTER_DELTA);
       const clampedDeltaY = clamp(deltaY, -MAX_POINTER_DELTA, MAX_POINTER_DELTA);
 
-      globeRef.current.rotation.y += clampedDeltaX * HORIZONTAL_DRAG_SENSITIVITY;
-      globeRef.current.rotation.x = clamp(
-        globeRef.current.rotation.x + clampedDeltaY * VERTICAL_DRAG_SENSITIVITY,
-        MIN_VERTICAL_ROTATION,
-        MAX_VERTICAL_ROTATION,
+      yawGroupRef.current.rotation.y += clampedDeltaX * HORIZONTAL_DRAG_SENSITIVITY;
+      tiltGroupRef.current.rotation.x = clamp(
+        tiltGroupRef.current.rotation.x + clampedDeltaY * VERTICAL_TILT_SENSITIVITY,
+        MIN_INSPECTION_TILT,
+        MAX_INSPECTION_TILT,
       );
 
       const velocityScale = 1000 / deltaTime;
@@ -1093,14 +1089,8 @@ function GlobeGroup({
         -MAX_HORIZONTAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
         MAX_HORIZONTAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
       );
-      const nextVelocityX = clamp(
-        clampedDeltaY * VERTICAL_DRAG_SENSITIVITY * velocityScale,
-        -MAX_VERTICAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
-        MAX_VERTICAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
-      );
 
       angularVelocityRef.current.y += (nextVelocityY - angularVelocityRef.current.y) * VELOCITY_SMOOTHING;
-      angularVelocityRef.current.x += (nextVelocityX - angularVelocityRef.current.x) * VELOCITY_SMOOTHING;
 
       previousPointerRef.current = {
         x: event.clientX,
@@ -1129,7 +1119,7 @@ function GlobeGroup({
       activePointerIdRef.current = event.pointerId;
       activePointerTargetRef.current = event.nativeEvent.target as Element;
       activePointerTargetRef.current.setPointerCapture?.(event.pointerId);
-      angularVelocityRef.current = { x: 0, y: 0 };
+      angularVelocityRef.current = { y: 0 };
       setInteractionState("dragging");
       previousPointerRef.current = {
         x: event.clientX,
@@ -1143,22 +1133,25 @@ function GlobeGroup({
 
   return (
     <group
-      ref={globeRef}
-      name="main-globe-rotation-group"
+      name="main-globe-orientation-group"
       rotation={[GLOBE_DISPLAY_TILT, 0, 0]}
       onPointerDown={handlePointerDown}
     >
-      <DigitalGlobeSurface
-        interactionEnergyRef={interactionEnergyRef}
-        prefersReducedMotion={prefersReducedMotion}
-        dotCount={isCompactViewport ? COMPACT_GLOBE_DOT_COUNT : DESKTOP_GLOBE_DOT_COUNT}
-      />
-      <OrbitalVeil interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
-      <RouteArcLayer
-        interactionEnergyRef={interactionEnergyRef}
-        prefersReducedMotion={prefersReducedMotion}
-        routeSegments={isCompactViewport ? COMPACT_ROUTE_SEGMENTS : DESKTOP_ROUTE_SEGMENTS}
-      />
+      <group ref={yawGroupRef} name="main-globe-yaw-group">
+        <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
+          <DigitalGlobeSurface
+            interactionEnergyRef={interactionEnergyRef}
+            prefersReducedMotion={prefersReducedMotion}
+            dotCount={isCompactViewport ? COMPACT_GLOBE_DOT_COUNT : DESKTOP_GLOBE_DOT_COUNT}
+          />
+          <OrbitalVeil interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
+          <RouteArcLayer
+            interactionEnergyRef={interactionEnergyRef}
+            prefersReducedMotion={prefersReducedMotion}
+            routeSegments={isCompactViewport ? COMPACT_ROUTE_SEGMENTS : DESKTOP_ROUTE_SEGMENTS}
+          />
+        </group>
+      </group>
     </group>
   );
 }
