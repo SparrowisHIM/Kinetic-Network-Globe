@@ -445,8 +445,8 @@ function RimAtmosphere() {
             varying float vRim;
 
             void main() {
-              float rim = smoothstep(0.34, 1.0, vRim);
-              float alpha = pow(rim, 2.4) * 0.24;
+              float rim = smoothstep(0.42, 1.0, vRim);
+              float alpha = pow(rim, 2.55) * 0.18;
               gl_FragColor = vec4(uGlowColor, alpha);
             }
           `}
@@ -458,7 +458,7 @@ function RimAtmosphere() {
         <meshBasicMaterial
           color="#2f9fff"
           transparent
-          opacity={0.012}
+          opacity={0.009}
           depthWrite={false}
           blending={AdditiveBlending}
         />
@@ -492,16 +492,20 @@ function DigitalGlobeSurface() {
     attribute float aSeed;
     uniform float uPointSize;
     varying float vFacing;
+    varying float vEdgeFade;
     varying float vSeed;
 
     void main() {
       vec3 viewNormal = normalize(normalMatrix * normalize(position));
-      vFacing = smoothstep(-0.08, 0.86, viewNormal.z);
+      // viewNormal.z is strongest at the camera-facing center of the sphere.
+      // It lets front dots read brightly while rim/back dots fall away.
+      vFacing = smoothstep(0.04, 0.9, viewNormal.z);
+      vEdgeFade = smoothstep(-0.02, 0.34, viewNormal.z);
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.52, 1.1, vFacing);
+      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.44, 1.06, vFacing);
     }
   `;
 
@@ -511,6 +515,7 @@ function DigitalGlobeSurface() {
     uniform vec3 uInnerColor;
     uniform vec3 uOuterColor;
     varying float vFacing;
+    varying float vEdgeFade;
     varying float vSeed;
 
     void main() {
@@ -518,10 +523,13 @@ function DigitalGlobeSurface() {
       float distanceFromCenter = length(point);
       float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
-      float alpha = dotMask * mix(0.02, 0.88, vFacing) * mix(0.78, 1.0, vSeed);
-      vec3 color = mix(uInnerColor, uOuterColor, core * 0.76 + vFacing * 0.22);
+      float frontLight = smoothstep(0.08, 1.0, vFacing);
+      float alpha = dotMask * vEdgeFade * mix(0.0, 0.96, frontLight) * mix(0.82, 1.0, vSeed);
+      vec3 edgeColor = uInnerColor * 0.58;
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.66 + frontLight * 0.34);
+      vec3 color = mix(edgeColor, brightColor, frontLight);
 
-      if (alpha < 0.01) discard;
+      if (alpha < 0.012) discard;
       gl_FragColor = vec4(color, alpha);
     }
   `;
@@ -530,7 +538,7 @@ function DigitalGlobeSurface() {
     <group>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 0.985, 96, 96]} />
-        <meshBasicMaterial color="#020915" transparent opacity={0.82} depthWrite={false} />
+        <meshBasicMaterial color="#020915" transparent opacity={0.76} depthWrite={false} />
       </mesh>
 
       <points geometry={landGeometry}>
@@ -547,7 +555,7 @@ function DigitalGlobeSurface() {
 
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 1.01, 96, 96]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.025} depthWrite={false} />
+        <meshBasicMaterial color="#1f8fff" transparent opacity={0.018} depthWrite={false} />
       </mesh>
 
       <RimAtmosphere />
