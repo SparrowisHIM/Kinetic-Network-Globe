@@ -23,7 +23,7 @@ const CENTER_LONGITUDE = 18;
 const CENTER_LATITUDE = 3;
 const DOT_SPACING = 1;
 const DOT_JITTER = DOT_SPACING * 0.14;
-const DOT_SIZE = 1.48;
+const DOT_SIZE = 1.56;
 // Keep the default vertical tilt neutral so the land matrix does not feel pushed upward.
 // The Africa/Europe starting view is selected by CENTER_LONGITUDE and the y-axis orientation.
 const DEFAULT_ROTATION_X = 0;
@@ -63,6 +63,9 @@ const GLOBE_PROJECTION = {
   centerLat: CENTER_LATITUDE,
   radius: GLOBE_RADIUS,
 };
+const SURFACE_GRID_LAT_STEP = 15;
+const SURFACE_GRID_LON_STEP = 15;
+const SURFACE_GRID_SEGMENT_STEP = 2;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -421,7 +424,7 @@ function useMediaQuery(query: string) {
 function RimAtmosphere() {
   const rimUniforms = useMemo(
     () => ({
-      uGlowColor: { value: [0.35, 0.78, 1] },
+      uGlowColor: { value: [0.48, 0.84, 1] },
     }),
     [],
   );
@@ -451,8 +454,8 @@ function RimAtmosphere() {
             varying float vRim;
 
             void main() {
-              float rim = smoothstep(0.42, 1.0, vRim);
-              float alpha = pow(rim, 2.55) * 0.18;
+              float rim = smoothstep(0.36, 1.0, vRim);
+              float alpha = pow(rim, 2.35) * 0.28;
               gl_FragColor = vec4(uGlowColor, alpha);
             }
           `}
@@ -464,7 +467,7 @@ function RimAtmosphere() {
         <meshBasicMaterial
           color="#2f9fff"
           transparent
-          opacity={0.009}
+          opacity={0.016}
           depthWrite={false}
           blending={AdditiveBlending}
         />
@@ -486,8 +489,8 @@ function DigitalGlobeSurface() {
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
-      uInnerColor: { value: [0.36, 0.78, 1] },
-      uOuterColor: { value: [0.82, 0.95, 1] },
+      uInnerColor: { value: [0.42, 0.82, 1] },
+      uOuterColor: { value: [0.9, 0.98, 1] },
     }),
     [],
   );
@@ -511,7 +514,7 @@ function DigitalGlobeSurface() {
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.44, 1.06, vFacing);
+      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.42, 1.08, vFacing);
     }
   `;
 
@@ -530,9 +533,9 @@ function DigitalGlobeSurface() {
       float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
       float frontLight = smoothstep(0.08, 1.0, vFacing);
-      float alpha = dotMask * vEdgeFade * mix(0.0, 0.96, frontLight) * mix(0.82, 1.0, vSeed);
-      vec3 edgeColor = uInnerColor * 0.58;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.66 + frontLight * 0.34);
+      float alpha = dotMask * vEdgeFade * mix(0.0, 1.0, frontLight) * mix(0.84, 1.0, vSeed);
+      vec3 edgeColor = uInnerColor * 0.64;
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.72 + frontLight * 0.36);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.012) discard;
@@ -544,8 +547,10 @@ function DigitalGlobeSurface() {
     <group>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 0.985, 96, 96]} />
-        <meshBasicMaterial color="#020915" transparent opacity={0.76} depthWrite={false} />
+        <meshBasicMaterial color="#020915" transparent opacity={0.7} depthWrite={false} />
       </mesh>
+
+      <SurfaceGrid />
 
       <points geometry={landGeometry}>
         <shaderMaterial
@@ -561,10 +566,65 @@ function DigitalGlobeSurface() {
 
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 1.01, 96, 96]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.018} depthWrite={false} />
+        <meshBasicMaterial color="#1f8fff" transparent opacity={0.026} depthWrite={false} />
       </mesh>
 
       <RimAtmosphere />
+    </group>
+  );
+}
+
+function SurfaceGrid() {
+  const gridLines = useMemo(() => {
+    const materialOptions = {
+      color: "#2a9fff",
+      transparent: true,
+      opacity: 0.045,
+      depthTest: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+    };
+    const lines: Line[] = [];
+
+    for (let lat = -75; lat <= 75; lat += SURFACE_GRID_LAT_STEP) {
+      const geometry = createProjectedGuideGeometry(
+        createLatitudeLinePoints(lat, SURFACE_GRID_SEGMENT_STEP),
+        GLOBE_RADIUS + 0.018,
+      );
+      lines.push(new Line(geometry, new LineBasicMaterial(materialOptions)));
+    }
+
+    for (let lon = -180; lon < 180; lon += SURFACE_GRID_LON_STEP) {
+      const geometry = createProjectedGuideGeometry(
+        createLongitudeLinePoints(lon, SURFACE_GRID_SEGMENT_STEP),
+        GLOBE_RADIUS + 0.018,
+      );
+      lines.push(new Line(geometry, new LineBasicMaterial(materialOptions)));
+    }
+
+    return lines;
+  }, []);
+
+  useEffect(
+    () => () => {
+      gridLines.forEach((line) => {
+        line.geometry.dispose();
+        const material = line.material;
+        if (Array.isArray(material)) {
+          material.forEach((entry) => entry.dispose());
+        } else {
+          material.dispose();
+        }
+      });
+    },
+    [gridLines],
+  );
+
+  return (
+    <group name="surface-reference-grid">
+      {gridLines.map((line, index) => (
+        <primitive key={index} object={line} />
+      ))}
     </group>
   );
 }
@@ -589,20 +649,20 @@ function createProjectedGuideGeometry(points: LandPoint[], radius = GLOBE_RADIUS
   return geometry;
 }
 
-function createLatitudeLinePoints(lat: number) {
+function createLatitudeLinePoints(lat: number, step = 1) {
   const points: LandPoint[] = [];
 
-  for (let lon = -180; lon <= 180; lon += 1) {
+  for (let lon = -180; lon <= 180; lon += step) {
     points.push({ lon, lat });
   }
 
   return points;
 }
 
-function createLongitudeLinePoints(lon: number) {
+function createLongitudeLinePoints(lon: number, step = 1) {
   const points: LandPoint[] = [];
 
-  for (let lat = -90; lat <= 90; lat += 1) {
+  for (let lat = -90; lat <= 90; lat += step) {
     points.push({ lon, lat });
   }
 
