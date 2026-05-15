@@ -19,11 +19,13 @@ import {
 
 const GLOBE_DEBUG_MODE = false;
 const IDLE_ROTATION_SPEED = 0.045;
-const CENTER_LONGITUDE = 18;
+const CENTER_LONGITUDE = 20;
 const CENTER_LATITUDE = 3;
-const DOT_SPACING = 1;
-const DOT_JITTER = DOT_SPACING * 0.14;
-const DOT_SIZE = 1.56;
+const DOT_SPACING = 1.08;
+const DOT_JITTER = DOT_SPACING * 0.2;
+const DOT_SIZE = 1.28;
+const LAND_MIN_LATITUDE = -62;
+const LAND_MAX_LATITUDE = 78;
 // Keep the default vertical tilt neutral so the land matrix does not feel pushed upward.
 // The Africa/Europe starting view is selected by CENTER_LONGITUDE and the y-axis orientation.
 const DEFAULT_ROTATION_X = 0;
@@ -58,8 +60,8 @@ const INTERACTION_ENERGY_EASING = 5.8;
 const REDUCED_MOTION_IDLE_SPEED = 0.008;
 const REDUCED_MOTION_PULSE_SPEED_MULTIPLIER = 1.85;
 const COMPACT_MEDIA_QUERY = "(max-width: 640px), (max-height: 620px)";
-const SURFACE_GRID_LAT_STEP = 15;
-const SURFACE_GRID_LON_STEP = 15;
+const SURFACE_GRID_LAT_STEP = 20;
+const SURFACE_GRID_LON_STEP = 20;
 const SURFACE_GRID_SEGMENT_STEP = 2;
 
 type GlobeGroupProps = {
@@ -502,7 +504,7 @@ function GlassyOceanIllumination() {
           void main() {
             float centerGlow = smoothstep(0.08, 1.0, vFacing);
             float rimGlow = pow(smoothstep(0.16, 1.0, vRim), 2.8);
-            float alpha = 0.018 + centerGlow * 0.032 + rimGlow * 0.024;
+            float alpha = 0.014 + centerGlow * 0.026 + rimGlow * 0.02;
             vec3 color = mix(uBaseColor, uGlowColor, centerGlow * 0.34 + rimGlow * 0.28);
 
             gl_FragColor = vec4(color, alpha);
@@ -519,6 +521,8 @@ function DigitalGlobeSurface() {
       longitudeStep: DOT_SPACING,
       latitudeStep: DOT_SPACING,
       jitter: DOT_JITTER,
+      minLatitude: LAND_MIN_LATITUDE,
+      maxLatitude: LAND_MAX_LATITUDE,
     });
 
     return createLandDotGeometry(landPoints);
@@ -526,8 +530,8 @@ function DigitalGlobeSurface() {
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
-      uInnerColor: { value: [0.42, 0.82, 1] },
-      uOuterColor: { value: [0.9, 0.98, 1] },
+      uInnerColor: { value: [0.5, 0.86, 1] },
+      uOuterColor: { value: [0.96, 0.99, 1] },
     }),
     [],
   );
@@ -551,7 +555,7 @@ function DigitalGlobeSurface() {
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.48, 1.08, vFacing);
+      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.46, 1.08, vFacing);
     }
   `;
 
@@ -570,10 +574,10 @@ function DigitalGlobeSurface() {
       float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
       float frontLight = smoothstep(0.04, 1.0, vFacing);
-      float visibleSideLight = mix(0.26, 1.0, frontLight);
+      float visibleSideLight = mix(0.24, 1.0, frontLight);
       float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.84, 1.0, vSeed);
-      vec3 edgeColor = uInnerColor * 0.82;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.72 + frontLight * 0.36);
+      vec3 edgeColor = uInnerColor * 0.78;
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.82 + frontLight * 0.4);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.012) discard;
@@ -619,14 +623,14 @@ function SurfaceGrid() {
     const materialOptions = {
       color: "#2a9fff",
       transparent: true,
-      opacity: 0.068,
+      opacity: 0.034,
       depthTest: true,
       depthWrite: false,
       blending: AdditiveBlending,
     };
     const lines: Line[] = [];
 
-    for (let lat = -75; lat <= 75; lat += SURFACE_GRID_LAT_STEP) {
+    for (let lat = -60; lat <= 60; lat += SURFACE_GRID_LAT_STEP) {
       const geometry = createSphericalGuideGeometry(
         createLatitudeLinePoints(lat, SURFACE_GRID_SEGMENT_STEP),
         GLOBE_RADIUS + 0.018,
@@ -1437,7 +1441,7 @@ export function GlobeComponent() {
       <div className="globe-stage">
         <Canvas
           className="globe-canvas"
-          camera={{ position: [0, 0, 7.2], fov: 42 }}
+          camera={{ position: [0, 0, 7.75], fov: 42 }}
           dpr={canvasDpr}
           gl={{ antialias: true, alpha: true }}
         >
