@@ -21,8 +21,9 @@ const GLOBE_DEBUG_MODE = true;
 const IDLE_ROTATION_SPEED = 0.045;
 const CENTER_LONGITUDE = 18;
 const CENTER_LATITUDE = 3;
-const DOT_SPACING = 1.45;
-const DOT_SIZE = 2.05;
+const DOT_SPACING = 1;
+const DOT_JITTER = DOT_SPACING * 0.14;
+const DOT_SIZE = 1.48;
 const GLOBE_DISPLAY_TILT = 0;
 const INITIAL_GLOBE_YAW = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.006;
@@ -437,6 +438,7 @@ function DigitalGlobeSurface() {
     const landPoints = generateLandPoints({
       longitudeStep: DOT_SPACING,
       latitudeStep: DOT_SPACING,
+      jitter: DOT_JITTER,
     });
     const positions: number[] = [];
     const seeds: number[] = [];

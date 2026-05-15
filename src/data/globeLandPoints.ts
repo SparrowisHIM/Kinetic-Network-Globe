@@ -22,7 +22,7 @@ export const LAND_TOPOLOGY_SOURCE = "world-atlas/land-110m.json";
 const DEFAULT_OPTIONS = {
   longitudeStep: 1.55,
   latitudeStep: 1.55,
-  jitter: 0.28,
+  jitter: 0.22,
   minLatitude: -85,
   maxLatitude: 85,
   seed: 1917,
