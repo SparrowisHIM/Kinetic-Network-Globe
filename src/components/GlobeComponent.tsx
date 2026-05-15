@@ -1,6 +1,7 @@
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
+import { projectLonLatToSphere } from "../utils/sphereProjection";
 import {
   AdditiveBlending,
   BufferGeometry,
@@ -37,7 +38,6 @@ const LAND_DOT_POINT_SIZE = 2.05;
 const ROUTE_RADIUS = GLOBE_RADIUS + 0.045;
 const DESKTOP_ROUTE_SEGMENTS = 96;
 const COMPACT_ROUTE_SEGMENTS = 72;
-const ROUTE_LONGITUDE_OFFSET = 90;
 const PULSE_LOOP_GAP = 0.18;
 const PULSE_TRAIL_OFFSET = 0.038;
 const NODE_RADIUS = ROUTE_RADIUS;
@@ -202,23 +202,13 @@ function getIdleBlend(horizontalVelocity: number) {
 }
 
 function latLngToSpherePosition(latitude: number, longitude: number, radius = ROUTE_RADIUS) {
-  const phi = ((90 - latitude) * Math.PI) / 180;
-  const theta = ((longitude + ROUTE_LONGITUDE_OFFSET) * Math.PI) / 180;
-  const x = -radius * Math.sin(phi) * Math.cos(theta);
-  const y = radius * Math.cos(phi);
-  const z = radius * Math.sin(phi) * Math.sin(theta);
+  const { x, y, z } = projectLonLatToSphere({ lat: latitude, lon: longitude }, radius);
 
   return new Vector3(x, y, z);
 }
 
 function landPointToSpherePosition(point: LandPoint, radius = GLOBE_RADIUS) {
-  const latRad = (point.lat * Math.PI) / 180;
-  const lonRad = (point.lon * Math.PI) / 180;
-  const x = radius * Math.cos(latRad) * Math.sin(lonRad);
-  const y = radius * Math.sin(latRad);
-  const z = radius * Math.cos(latRad) * Math.cos(lonRad);
-
-  return { x, y, z };
+  return projectLonLatToSphere(point, radius);
 }
 
 function getLandPointSeed(point: LandPoint) {
@@ -227,6 +217,21 @@ function getLandPointSeed(point: LandPoint) {
   const mixed = Math.imul(lonSeed ^ 0x9e3779b9, 2654435761) ^ Math.imul(latSeed, 1597334677);
 
   return ((mixed >>> 0) % 10000) / 10000;
+}
+
+function roundDebugValue(value: number) {
+  return Number(value.toFixed(5));
+}
+
+function logLandDotYBounds(minY: number, maxY: number, yTotal: number, count: number) {
+  if (!import.meta.env.DEV || count === 0) return;
+
+  console.info("[globe] land dot y distribution", {
+    minY: roundDebugValue(minY),
+    maxY: roundDebugValue(maxY),
+    averageY: roundDebugValue(yTotal / count),
+    count,
+  });
 }
 
 function createRouteCurve(route: GlobeRoute) {
@@ -419,6 +424,9 @@ function DigitalGlobeSurface() {
     const positions = new Float32Array(landPoints.length * 3);
     const seeds = new Float32Array(landPoints.length);
     const geometry = new BufferGeometry();
+    let minY = Infinity;
+    let maxY = -Infinity;
+    let yTotal = 0;
 
     landPoints.forEach((point, index) => {
       const positionIndex = index * 3;
@@ -426,8 +434,13 @@ function DigitalGlobeSurface() {
       positions[positionIndex] = position.x;
       positions[positionIndex + 1] = position.y;
       positions[positionIndex + 2] = position.z;
+      minY = Math.min(minY, position.y);
+      maxY = Math.max(maxY, position.y);
+      yTotal += position.y;
       seeds[index] = getLandPointSeed(point);
     });
+
+    logLandDotYBounds(minY, maxY, yTotal, landPoints.length);
 
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     geometry.setAttribute("aSeed", new Float32BufferAttribute(seeds, 1));
