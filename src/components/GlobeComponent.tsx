@@ -463,18 +463,18 @@ function getMomentumEnergy(velocity: AngularVelocity) {
 }
 
 function createSurfacePointGeometry(dotCounts: SurfaceDotCounts) {
-  const candidateCount = Math.max((dotCounts.land + dotCounts.ocean) * 5, 24000);
+  const candidateCount = Math.max((dotCounts.land + dotCounts.ocean) * 7, 60000);
+  const landCandidates: number[] = [];
+  const oceanCandidates: number[] = [];
+  const landCandidateSeeds: number[] = [];
+  const oceanCandidateSeeds: number[] = [];
   const landPositions = new Float32Array(dotCounts.land * 3);
   const oceanPositions = new Float32Array(dotCounts.ocean * 3);
   const landSeeds = new Float32Array(dotCounts.land);
   const oceanSeeds = new Float32Array(dotCounts.ocean);
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-  let landIndex = 0;
-  let oceanIndex = 0;
 
   for (let index = 0; index < candidateCount; index += 1) {
-    if (landIndex >= dotCounts.land && oceanIndex >= dotCounts.ocean) break;
-
     const y = 1 - (index / (candidateCount - 1)) * 2;
     const theta = index * goldenAngle;
     const latitude = (Math.asin(y) * 180) / Math.PI;
@@ -482,23 +482,41 @@ function createSurfacePointGeometry(dotCounts: SurfaceDotCounts) {
     const position = latLngToSpherePosition(latitude, longitude, GLOBE_RADIUS + 0.006);
     const isLand = isLandCoordinate(longitude, latitude);
 
-    if (isLand && landIndex < dotCounts.land) {
-      const positionIndex = landIndex * 3;
-      landPositions[positionIndex] = position.x;
-      landPositions[positionIndex + 1] = position.y;
-      landPositions[positionIndex + 2] = position.z;
-      landSeeds[landIndex] = (index % 23) / 23;
-      landIndex += 1;
-    } else if (!isLand && oceanIndex < dotCounts.ocean && index % 3 === 0) {
-      const positionIndex = oceanIndex * 3;
-      oceanPositions[positionIndex] = position.x;
-      oceanPositions[positionIndex + 1] = position.y;
-      oceanPositions[positionIndex + 2] = position.z;
-      oceanSeeds[oceanIndex] = (index % 19) / 19;
-      oceanIndex += 1;
+    if (isLand) {
+      landCandidates.push(position.x, position.y, position.z);
+      landCandidateSeeds.push((index % 23) / 23);
+    } else {
+      oceanCandidates.push(position.x, position.y, position.z);
+      oceanCandidateSeeds.push((index % 19) / 19);
     }
   }
 
+  function fillSelectedPoints(
+    sourcePositions: number[],
+    sourceSeeds: number[],
+    targetPositions: Float32Array,
+    targetSeeds: Float32Array,
+    targetCount: number,
+  ) {
+    const sourceCount = sourceSeeds.length;
+    const selectedCount = Math.min(targetCount, sourceCount);
+
+    for (let index = 0; index < selectedCount; index += 1) {
+      const sourceIndex = Math.floor((index / Math.max(selectedCount - 1, 1)) * Math.max(sourceCount - 1, 0));
+      const sourcePositionIndex = sourceIndex * 3;
+      const targetPositionIndex = index * 3;
+
+      targetPositions[targetPositionIndex] = sourcePositions[sourcePositionIndex];
+      targetPositions[targetPositionIndex + 1] = sourcePositions[sourcePositionIndex + 1];
+      targetPositions[targetPositionIndex + 2] = sourcePositions[sourcePositionIndex + 2];
+      targetSeeds[index] = sourceSeeds[sourceIndex];
+    }
+
+    return selectedCount;
+  }
+
+  const landIndex = fillSelectedPoints(landCandidates, landCandidateSeeds, landPositions, landSeeds, dotCounts.land);
+  const oceanIndex = fillSelectedPoints(oceanCandidates, oceanCandidateSeeds, oceanPositions, oceanSeeds, dotCounts.ocean);
   const landGeometry = new BufferGeometry();
   const oceanGeometry = new BufferGeometry();
 
