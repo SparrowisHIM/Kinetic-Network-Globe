@@ -460,6 +460,7 @@ function DigitalGlobeSurface({
       uInnerColor: { value: [0.22, 0.67, 1] },
       uOuterColor: { value: [0.82, 0.95, 1] },
       uEnergy: { value: 0 },
+      uTime: { value: 0 },
     }),
     [],
   );
@@ -467,9 +468,10 @@ function DigitalGlobeSurface({
 
   useEffect(() => () => dotGeometry.dispose(), [dotGeometry]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
     dotUniforms.uEnergy.value = energy;
+    dotUniforms.uTime.value = prefersReducedMotion ? 0 : clock.elapsedTime;
 
     if (innerShellRef.current) {
       innerShellRef.current.opacity = 0.06 + energy * 0.028;
@@ -493,13 +495,18 @@ function DigitalGlobeSurface({
           vertexShader={`
             attribute float aSeed;
             uniform float uPointSize;
+            uniform float uTime;
             varying float vFacing;
             varying float vSeed;
+            varying float vSweep;
 
             void main() {
               vec3 viewNormal = normalize(normalMatrix * normalize(position));
               vFacing = smoothstep(-0.08, 0.85, viewNormal.z);
               vSeed = aSeed;
+              float latitude = position.y / ${GLOBE_RADIUS.toFixed(2)};
+              float slowBand = sin(latitude * 7.2 + uTime * 0.72 + aSeed * 6.28318530718);
+              vSweep = smoothstep(0.88, 1.0, slowBand * 0.5 + 0.5) * vFacing;
 
               vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
               gl_Position = projectionMatrix * mvPosition;
@@ -514,14 +521,16 @@ function DigitalGlobeSurface({
             uniform float uEnergy;
             varying float vFacing;
             varying float vSeed;
+            varying float vSweep;
 
             void main() {
               vec2 point = gl_PointCoord - vec2(0.5);
               float distanceFromCenter = length(point);
               float dotMask = smoothstep(0.5, 0.18, distanceFromCenter);
               float core = smoothstep(0.24, 0.0, distanceFromCenter);
-              float alpha = dotMask * mix(0.06, 0.72 + uEnergy * 0.12, vFacing) * mix(0.72, 1.0, vSeed);
-              vec3 color = mix(uInnerColor, uOuterColor, core * 0.85 + vFacing * 0.25);
+              float alpha = dotMask * mix(0.05, 0.66 + uEnergy * 0.1, vFacing) * mix(0.68, 1.0, vSeed);
+              alpha += dotMask * vSweep * 0.18;
+              vec3 color = mix(uInnerColor, uOuterColor, core * 0.82 + vFacing * 0.22 + vSweep * 0.24);
 
               if (alpha < 0.01) discard;
               gl_FragColor = vec4(color, alpha);
@@ -536,6 +545,70 @@ function DigitalGlobeSurface({
       </mesh>
 
       <RimAtmosphere interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
+    </group>
+  );
+}
+
+function OrbitalVeil({
+  interactionEnergyRef,
+  prefersReducedMotion,
+}: {
+  interactionEnergyRef: InteractionEnergyRef;
+  prefersReducedMotion: boolean;
+}) {
+  const veilRef = useRef<Group>(null);
+  const primaryMaterialRef = useRef<MeshBasicMaterial>(null);
+  const secondaryMaterialRef = useRef<MeshBasicMaterial>(null);
+  const tertiaryMaterialRef = useRef<MeshBasicMaterial>(null);
+
+  useFrame((_, delta) => {
+    const energy = prefersReducedMotion ? interactionEnergyRef.current * 0.35 : interactionEnergyRef.current;
+
+    if (veilRef.current && !prefersReducedMotion) {
+      veilRef.current.rotation.y += delta * 0.026;
+      veilRef.current.rotation.z -= delta * 0.014;
+    }
+
+    if (primaryMaterialRef.current) primaryMaterialRef.current.opacity = 0.055 + energy * 0.018;
+    if (secondaryMaterialRef.current) secondaryMaterialRef.current.opacity = 0.036 + energy * 0.014;
+    if (tertiaryMaterialRef.current) tertiaryMaterialRef.current.opacity = 0.026 + energy * 0.01;
+  });
+
+  return (
+    <group ref={veilRef} name="orbital-veil-layer">
+      <mesh rotation={[0.55, 0.12, -0.22]}>
+        <torusGeometry args={[1.83, 0.0024, 8, 220]} />
+        <meshBasicMaterial
+          ref={primaryMaterialRef}
+          color="#9be9ff"
+          transparent
+          opacity={0.055}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+      <mesh rotation={[1.18, -0.42, 0.28]}>
+        <torusGeometry args={[1.88, 0.0018, 8, 220]} />
+        <meshBasicMaterial
+          ref={secondaryMaterialRef}
+          color="#57cfff"
+          transparent
+          opacity={0.036}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+      <mesh rotation={[-0.35, 0.64, 0.82]}>
+        <torusGeometry args={[1.73, 0.0016, 8, 220]} />
+        <meshBasicMaterial
+          ref={tertiaryMaterialRef}
+          color="#d6fbff"
+          transparent
+          opacity={0.026}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
     </group>
   );
 }
@@ -1080,6 +1153,7 @@ function GlobeGroup({
         prefersReducedMotion={prefersReducedMotion}
         dotCount={isCompactViewport ? COMPACT_GLOBE_DOT_COUNT : DESKTOP_GLOBE_DOT_COUNT}
       />
+      <OrbitalVeil interactionEnergyRef={interactionEnergyRef} prefersReducedMotion={prefersReducedMotion} />
       <RouteArcLayer
         interactionEnergyRef={interactionEnergyRef}
         prefersReducedMotion={prefersReducedMotion}
