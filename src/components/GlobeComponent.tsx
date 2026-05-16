@@ -29,7 +29,7 @@ const CENTER_LONGITUDE = 20;
 const CENTER_LATITUDE = 3;
 const DOT_SPACING = 1.08;
 const DOT_JITTER = DOT_SPACING * 0.2;
-const DOT_SIZE = 1.28;
+const DOT_SIZE = 1.42;
 const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 78;
 // Keep the default vertical tilt neutral so the land matrix does not feel pushed upward.
@@ -428,7 +428,7 @@ function DigitalGlobeSurface() {
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
-      uInnerColor: { value: [0.5, 0.86, 1] },
+      uInnerColor: { value: [0.62, 0.9, 1] },
       uOuterColor: { value: [0.96, 0.99, 1] },
     }),
     [],
@@ -447,13 +447,13 @@ function DigitalGlobeSurface() {
       vec3 viewNormal = normalize(normalMatrix * normalize(position));
       // viewNormal.z is strongest at the camera-facing center of the sphere.
       // It lets front dots read brightly while rim/back dots fall away.
-      vFacing = smoothstep(0.0, 0.74, viewNormal.z);
-      vEdgeFade = smoothstep(-0.04, 0.26, viewNormal.z);
+      vFacing = smoothstep(-0.02, 0.68, viewNormal.z);
+      vEdgeFade = smoothstep(-0.08, 0.2, viewNormal.z);
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.46, 1.08, vFacing);
+      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.52, 1.16, vFacing);
     }
   `;
 
@@ -471,11 +471,11 @@ function DigitalGlobeSurface() {
       float distanceFromCenter = length(point);
       float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
-      float frontLight = smoothstep(0.04, 1.0, vFacing);
-      float visibleSideLight = mix(0.24, 1.0, frontLight);
-      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.84, 1.0, vSeed);
-      vec3 edgeColor = uInnerColor * 0.78;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.82 + frontLight * 0.4);
+      float frontLight = smoothstep(0.02, 1.0, vFacing);
+      float visibleSideLight = mix(0.34, 1.12, frontLight);
+      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.88, 1.0, vSeed);
+      vec3 edgeColor = uInnerColor * 0.9;
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.92 + frontLight * 0.46);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.012) discard;
