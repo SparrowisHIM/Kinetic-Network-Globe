@@ -32,9 +32,9 @@ const DOT_JITTER = DOT_SPACING * 0.2;
 const DOT_SIZE = 1.42;
 const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 78;
-// Keep the default vertical tilt neutral so the land matrix does not feel pushed upward.
-// The Africa/Europe starting view is selected by CENTER_LONGITUDE and the y-axis orientation.
-const DEFAULT_ROTATION_X = 0;
+// A tiny presentation pitch matches the reference framing: northern land stays readable
+// while Africa sits slightly below visual center. Drag still returns the globe upright.
+const DEFAULT_ROTATION_X = -0.08;
 const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
