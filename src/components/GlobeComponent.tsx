@@ -27,9 +27,9 @@ const GLOBE_DEBUG_MODE = false;
 const IDLE_ROTATION_SPEED = 0.045;
 const CENTER_LONGITUDE = 20;
 const CENTER_LATITUDE = 3;
-const DOT_SPACING = 1.08;
-const DOT_JITTER = DOT_SPACING * 0.2;
-const DOT_SIZE = 1.42;
+const DOT_SPACING = 0.94;
+const DOT_JITTER = DOT_SPACING * 0.14;
+const DOT_SIZE = 1.34;
 const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 78;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
