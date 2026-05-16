@@ -31,7 +31,7 @@ const DOT_SPACING = 0.94;
 const DOT_JITTER = DOT_SPACING * 0.14;
 const DOT_SIZE = 1.34;
 const LAND_MIN_LATITUDE = -62;
-const LAND_MAX_LATITUDE = 78;
+const LAND_MAX_LATITUDE = 82;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
 // while Africa sits slightly below visual center. Drag still returns the globe upright.
 const DEFAULT_ROTATION_X = -0.08;
@@ -441,14 +441,17 @@ function DigitalGlobeSurface() {
     uniform float uPointSize;
     varying float vFacing;
     varying float vEdgeFade;
+    varying float vNorthLight;
     varying float vSeed;
 
     void main() {
-      vec3 viewNormal = normalize(normalMatrix * normalize(position));
+      vec3 sphereNormal = normalize(position);
+      vec3 viewNormal = normalize(normalMatrix * sphereNormal);
       // viewNormal.z is strongest at the camera-facing center of the sphere.
       // It lets front dots read brightly while rim/back dots fall away.
       vFacing = smoothstep(-0.02, 0.68, viewNormal.z);
       vEdgeFade = smoothstep(-0.08, 0.2, viewNormal.z);
+      vNorthLight = smoothstep(0.06, 0.82, sphereNormal.y);
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
@@ -464,6 +467,7 @@ function DigitalGlobeSurface() {
     uniform vec3 uOuterColor;
     varying float vFacing;
     varying float vEdgeFade;
+    varying float vNorthLight;
     varying float vSeed;
 
     void main() {
@@ -472,10 +476,11 @@ function DigitalGlobeSurface() {
       float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
       float frontLight = smoothstep(0.02, 1.0, vFacing);
-      float visibleSideLight = mix(0.34, 1.12, frontLight);
+      float topLandLift = vNorthLight * 0.22;
+      float visibleSideLight = mix(0.34, 1.12 + topLandLift, frontLight);
       float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.88, 1.0, vSeed);
       vec3 edgeColor = uInnerColor * 0.9;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.92 + frontLight * 0.46);
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.92 + frontLight * 0.46 + topLandLift);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.012) discard;
