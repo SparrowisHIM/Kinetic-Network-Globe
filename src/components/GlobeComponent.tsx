@@ -1,13 +1,25 @@
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
+import {
+  NETWORK_CITIES,
+  NETWORK_ROUTES,
+  type NetworkCity,
+  type NetworkCityId,
+  type NetworkRoute,
+} from "../data/globeRoutes";
 import { projectLonLatToSphere } from "../utils/sphereProjection";
 import {
   AdditiveBlending,
   BufferGeometry,
+  CanvasTexture,
+  Color,
   Float32BufferAttribute,
+  LinearFilter,
   Line,
   LineBasicMaterial,
+  QuadraticBezierCurve3,
+  Vector3,
   type Group,
 } from "three";
 
@@ -50,6 +62,16 @@ const COMPACT_MEDIA_QUERY = "(max-width: 640px), (max-height: 620px)";
 const SURFACE_GRID_LAT_STEP = 20;
 const SURFACE_GRID_LON_STEP = 20;
 const SURFACE_GRID_SEGMENT_STEP = 2;
+const ROUTE_SURFACE_RADIUS = GLOBE_RADIUS + 0.05;
+const ROUTE_CURVE_SEGMENTS = 112;
+const ROUTE_LINE_RADIUS = 0.0046;
+const ROUTE_PULSE_SPEED = 0.115;
+const ROUTE_PULSE_RADIUS = 0.026;
+const ROUTE_NODE_RADIUS = 0.024;
+const DESKTOP_LABEL_CITY_IDS: NetworkCityId[] = ["london", "dubai", "singapore", "new-york"];
+const COMPACT_LABEL_CITY_IDS: NetworkCityId[] = ["london", "dubai"];
+const ROUTE_LABEL_TEXTURE_WIDTH = 512;
+const ROUTE_LABEL_TEXTURE_HEIGHT = 148;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -66,6 +88,7 @@ type GlobeSceneProps = GlobeGroupProps & {
 type GlobeInteractionProps = GlobeGroupProps & {
   onInteractionStateChange: (interactionState: InteractionState) => void;
   prefersReducedMotion: boolean;
+  isCompactViewport: boolean;
 };
 
 type PointerPosition = {
@@ -76,6 +99,11 @@ type PointerPosition = {
 
 type AngularVelocity = {
   y: number;
+};
+
+type RouteCurveModel = {
+  route: NetworkRoute;
+  curve: QuadraticBezierCurve3;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -97,6 +125,101 @@ function getIdleBlend(horizontalVelocity: number) {
 
 function landPointToSpherePosition(point: LandPoint, radius = GLOBE_RADIUS) {
   return projectLonLatToSphere(point, radius);
+}
+
+function sphereCoordinateToVector(point: LandPoint, radius = ROUTE_SURFACE_RADIUS) {
+  const position = projectLonLatToSphere(point, radius);
+
+  return new Vector3(position.x, position.y, position.z);
+}
+
+function createRouteCurve(from: LandPoint, to: LandPoint) {
+  const start = sphereCoordinateToVector(from);
+  const end = sphereCoordinateToVector(to);
+  const angle = start.angleTo(end);
+  const arcLift = clamp(angle * 0.42, 0.24, 0.82);
+  const controlPoint = start
+    .clone()
+    .add(end)
+    .normalize()
+    .multiplyScalar(ROUTE_SURFACE_RADIUS + arcLift);
+
+  return new QuadraticBezierCurve3(start, controlPoint, end);
+}
+
+function getCityMap() {
+  return new Map(NETWORK_CITIES.map((city) => [city.id, city]));
+}
+
+function getWorldFacingAmount(object: Group, cameraPosition: Vector3) {
+  const worldPosition = new Vector3();
+  object.getWorldPosition(worldPosition);
+
+  const surfaceNormal = worldPosition.clone().normalize();
+  const cameraDirection = cameraPosition.clone().normalize();
+
+  return surfaceNormal.dot(cameraDirection);
+}
+
+function drawRoundedRect(context: CanvasRenderingContext2D, width: number, height: number, radius: number) {
+  context.beginPath();
+  context.moveTo(radius, 0);
+  context.lineTo(width - radius, 0);
+  context.quadraticCurveTo(width, 0, width, radius);
+  context.lineTo(width, height - radius);
+  context.quadraticCurveTo(width, height, width - radius, height);
+  context.lineTo(radius, height);
+  context.quadraticCurveTo(0, height, 0, height - radius);
+  context.lineTo(0, radius);
+  context.quadraticCurveTo(0, 0, radius, 0);
+  context.closePath();
+}
+
+function createRouteLabelTexture(label: string) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  canvas.width = ROUTE_LABEL_TEXTURE_WIDTH;
+  canvas.height = ROUTE_LABEL_TEXTURE_HEIGHT;
+
+  if (!context) return null;
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const labelWidth = clamp(label.length * 28 + 106, 250, 430);
+  const labelHeight = 68;
+  const left = centerX - labelWidth / 2;
+  const top = centerY - labelHeight / 2;
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.shadowColor = "rgba(45, 194, 255, 0.28)";
+  context.shadowBlur = 28;
+  context.fillStyle = "rgba(3, 10, 22, 0.82)";
+  context.translate(left, top);
+  drawRoundedRect(context, labelWidth, labelHeight, 12);
+  context.fill();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+
+  context.shadowBlur = 0;
+  context.strokeStyle = "rgba(148, 226, 255, 0.28)";
+  context.lineWidth = 2;
+  context.translate(left, top);
+  drawRoundedRect(context, labelWidth, labelHeight, 12);
+  context.stroke();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+
+  context.fillStyle = "rgba(243, 251, 255, 0.96)";
+  context.font = "700 27px 'Segoe UI', sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(label, centerX, centerY + 1);
+
+  const texture = new CanvasTexture(canvas);
+  texture.minFilter = LinearFilter;
+  texture.magFilter = LinearFilter;
+  texture.needsUpdate = true;
+
+  return texture;
 }
 
 function getLandPointSeed(point: LandPoint) {
@@ -383,6 +506,240 @@ function DigitalGlobeSurface() {
   );
 }
 
+function NetworkRouteLayer({
+  prefersReducedMotion,
+  isCompactViewport,
+}: {
+  prefersReducedMotion: boolean;
+  isCompactViewport: boolean;
+}) {
+  const cityById = useMemo(getCityMap, []);
+  const labelCityIds = useMemo(
+    () => new Set(isCompactViewport ? COMPACT_LABEL_CITY_IDS : DESKTOP_LABEL_CITY_IDS),
+    [isCompactViewport],
+  );
+  const cityPositions = useMemo(
+    () =>
+      NETWORK_CITIES.map((city) => ({
+        city,
+        position: sphereCoordinateToVector(city),
+      })),
+    [],
+  );
+  const routeCurves = useMemo<RouteCurveModel[]>(
+    () =>
+      NETWORK_ROUTES.map((route) => {
+        const from = cityById.get(route.from);
+        const to = cityById.get(route.to);
+
+        if (!from || !to) {
+          throw new Error(`Missing city for route ${route.id}`);
+        }
+
+        return {
+          route,
+          curve: createRouteCurve(from, to),
+        };
+      }),
+    [cityById],
+  );
+
+  return (
+    <group name="digital-network-route-layer">
+      {routeCurves.map(({ route, curve }) => (
+        <NetworkRouteArc key={route.id} route={route} curve={curve} prefersReducedMotion={prefersReducedMotion} />
+      ))}
+
+      {cityPositions.map(({ city, position }) => (
+        <NetworkCityMarker
+          key={city.id}
+          city={city}
+          position={position}
+          showLabel={labelCityIds.has(city.id)}
+          isCompactViewport={isCompactViewport}
+        />
+      ))}
+    </group>
+  );
+}
+
+function NetworkRouteArc({
+  route,
+  curve,
+  prefersReducedMotion,
+}: {
+  route: NetworkRoute;
+  curve: QuadraticBezierCurve3;
+  prefersReducedMotion: boolean;
+}) {
+  const pulseRef = useRef<Group>(null);
+  const color = useMemo(() => new Color(route.color), [route.color]);
+  const accentColor = useMemo(() => new Color(route.accentColor), [route.accentColor]);
+
+  useFrame(({ clock }) => {
+    if (!pulseRef.current) return;
+
+    if (prefersReducedMotion) {
+      pulseRef.current.visible = false;
+      return;
+    }
+
+    pulseRef.current.visible = true;
+
+    const progress = (clock.elapsedTime * ROUTE_PULSE_SPEED + route.delay) % 1;
+    const easedProgress = 0.5 - Math.cos(progress * Math.PI) * 0.5;
+    const pulsePosition = curve.getPointAt(easedProgress);
+
+    pulseRef.current.position.copy(pulsePosition);
+  });
+
+  return (
+    <group name={`network-route-${route.id}`}>
+      <mesh renderOrder={4}>
+        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS, 8, false]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.34}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+
+      <mesh renderOrder={3}>
+        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS * 2.8, 8, false]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.075}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+
+      <group ref={pulseRef} renderOrder={6}>
+        <mesh>
+          <sphereGeometry args={[ROUTE_PULSE_RADIUS, 16, 16]} />
+          <meshBasicMaterial
+            color={accentColor}
+            transparent
+            opacity={0.92}
+            depthTest
+            depthWrite={false}
+            blending={AdditiveBlending}
+          />
+        </mesh>
+
+        <mesh>
+          <sphereGeometry args={[ROUTE_PULSE_RADIUS * 2.4, 18, 18]} />
+          <meshBasicMaterial
+            color={color}
+            transparent
+            opacity={0.18}
+            depthTest
+            depthWrite={false}
+            blending={AdditiveBlending}
+          />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function NetworkCityMarker({
+  city,
+  position,
+  showLabel,
+  isCompactViewport,
+}: {
+  city: NetworkCity;
+  position: Vector3;
+  showLabel: boolean;
+  isCompactViewport: boolean;
+}) {
+  const markerRef = useRef<Group>(null);
+  const camera = useThree((state) => state.camera);
+  const [labelVisible, setLabelVisible] = useState(false);
+  const lastLabelVisibleRef = useRef(false);
+  const labelTexture = useMemo(
+    () => (showLabel && typeof document !== "undefined" ? createRouteLabelTexture(city.label.toUpperCase()) : null),
+    [city.label, showLabel],
+  );
+  const labelScale = useMemo<[number, number, number]>(() => {
+    const width = clamp(city.label.length * 0.12 + 0.56, 0.92, 1.48) * (isCompactViewport ? 0.78 : 1);
+
+    return [width, width * 0.29, 1];
+  }, [city.label.length, isCompactViewport]);
+
+  useEffect(() => () => labelTexture?.dispose(), [labelTexture]);
+
+  useFrame(() => {
+    if (!markerRef.current) return;
+
+    const facingAmount = getWorldFacingAmount(markerRef.current, camera.position);
+    const markerVisible = facingAmount > -0.08;
+    const nextLabelVisible = showLabel && facingAmount > 0.22;
+
+    markerRef.current.visible = markerVisible;
+
+    if (lastLabelVisibleRef.current !== nextLabelVisible) {
+      lastLabelVisibleRef.current = nextLabelVisible;
+      setLabelVisible(nextLabelVisible);
+    }
+  });
+
+  return (
+    <group
+      ref={markerRef}
+      name={`network-city-${city.id}`}
+      position={[position.x, position.y, position.z]}
+      renderOrder={5}
+    >
+      <mesh>
+        <sphereGeometry args={[ROUTE_NODE_RADIUS, 16, 16]} />
+        <meshBasicMaterial
+          color="#c8f6ff"
+          transparent
+          opacity={0.86}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+
+      <mesh>
+        <sphereGeometry args={[ROUTE_NODE_RADIUS * 2.15, 16, 16]} />
+        <meshBasicMaterial
+          color="#45dfff"
+          transparent
+          opacity={0.12}
+          depthTest
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+
+      {labelTexture ? (
+        <sprite
+          position={[0, ROUTE_NODE_RADIUS * (isCompactViewport ? 6.4 : 7.2), 0]}
+          scale={labelScale}
+          renderOrder={7}
+        >
+          <spriteMaterial
+            map={labelTexture}
+            transparent
+            opacity={labelVisible ? 0.96 : 0}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </sprite>
+      ) : null}
+    </group>
+  );
+}
+
 function SurfaceGrid() {
   const gridLines = useMemo(() => {
     const materialOptions = {
@@ -551,6 +908,7 @@ function GlobeGroup({
   onDraggingChange,
   onInteractionStateChange,
   prefersReducedMotion,
+  isCompactViewport,
 }: GlobeInteractionProps) {
   const yawGroupRef = useRef<Group>(null);
   const tiltGroupRef = useRef<Group>(null);
@@ -704,7 +1062,6 @@ function GlobeGroup({
       if (GLOBE_DEBUG_MODE) return;
 
       event.stopPropagation();
-      event.nativeEvent.preventDefault();
 
       isDraggingRef.current = true;
       activePointerIdRef.current = event.pointerId;
@@ -735,6 +1092,7 @@ function GlobeGroup({
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, DEFAULT_ROTATION_Y, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface />
+          <NetworkRouteLayer prefersReducedMotion={prefersReducedMotion} isCompactViewport={isCompactViewport} />
         </group>
       </group>
     </group>
@@ -758,6 +1116,7 @@ function GlobeScene({
         onDraggingChange={onDraggingChange}
         onInteractionStateChange={onInteractionStateChange}
         prefersReducedMotion={prefersReducedMotion}
+        isCompactViewport={isCompactViewport}
       />
       <DebugCenteringGuides />
     </>
