@@ -26,7 +26,7 @@ import {
 const GLOBE_DEBUG_MODE = false;
 const IDLE_ROTATION_SPEED = 0.045;
 const CENTER_LONGITUDE = 20;
-const CENTER_LATITUDE = 3;
+const CENTER_LATITUDE = 6;
 const DOT_SPACING = 0.94;
 const DOT_JITTER = DOT_SPACING * 0.14;
 const DOT_SIZE = 1.34;
@@ -34,7 +34,7 @@ const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 82;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
 // while Africa sits slightly below visual center. Drag still returns the globe upright.
-const DEFAULT_ROTATION_X = -0.08;
+const DEFAULT_ROTATION_X = -0.105;
 const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
