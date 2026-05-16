@@ -68,8 +68,18 @@ const ROUTE_LINE_RADIUS = 0.0046;
 const ROUTE_PULSE_SPEED = 0.115;
 const ROUTE_PULSE_RADIUS = 0.026;
 const ROUTE_NODE_RADIUS = 0.024;
-const DESKTOP_LABEL_CITY_IDS: NetworkCityId[] = ["london", "dubai", "singapore", "new-york"];
-const COMPACT_LABEL_CITY_IDS: NetworkCityId[] = ["london", "dubai"];
+const DESKTOP_LABEL_CITY_IDS: NetworkCityId[] = [
+  "london",
+  "dubai",
+  "singapore",
+  "new-york",
+  "lagos",
+  "rome",
+  "moscow",
+  "beijing",
+  "shanghai",
+];
+const COMPACT_LABEL_CITY_IDS: NetworkCityId[] = ["london", "dubai", "lagos", "beijing"];
 const ROUTE_LABEL_TEXTURE_WIDTH = 512;
 const ROUTE_LABEL_TEXTURE_HEIGHT = 148;
 
