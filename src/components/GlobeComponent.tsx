@@ -24,17 +24,18 @@ import {
 } from "three";
 
 const GLOBE_DEBUG_MODE = false;
+const SHOW_NETWORK_LAYER = false;
 const IDLE_ROTATION_SPEED = 0.045;
-const CENTER_LONGITUDE = 20;
-const CENTER_LATITUDE = 6;
-const DOT_SPACING = 0.94;
-const DOT_JITTER = DOT_SPACING * 0.14;
-const DOT_SIZE = 1.34;
+const CENTER_LONGITUDE = 18;
+const CENTER_LATITUDE = 8;
+const DOT_SPACING = 0.72;
+const DOT_JITTER = DOT_SPACING * 0.09;
+const DOT_SIZE = 1.08;
 const LAND_MIN_LATITUDE = -62;
-const LAND_MAX_LATITUDE = 82;
+const LAND_MAX_LATITUDE = 84;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
 // while Africa sits slightly below visual center. Drag still returns the globe upright.
-const DEFAULT_ROTATION_X = -0.105;
+const DEFAULT_ROTATION_X = -0.075;
 const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
@@ -354,7 +355,7 @@ function RimAtmosphere() {
 
             void main() {
               float rim = smoothstep(0.36, 1.0, vRim);
-              float alpha = pow(rim, 2.35) * 0.28;
+              float alpha = pow(rim, 2.42) * 0.25;
               gl_FragColor = vec4(uGlowColor, alpha);
             }
           `}
@@ -414,8 +415,8 @@ function GlassyOceanIllumination() {
           void main() {
             float centerGlow = smoothstep(0.08, 1.0, vFacing);
             float rimGlow = pow(smoothstep(0.16, 1.0, vRim), 2.8);
-            float alpha = 0.014 + centerGlow * 0.026 + rimGlow * 0.02;
-            vec3 color = mix(uBaseColor, uGlowColor, centerGlow * 0.34 + rimGlow * 0.28);
+            float alpha = 0.012 + centerGlow * 0.022 + rimGlow * 0.018;
+            vec3 color = mix(uBaseColor, uGlowColor, centerGlow * 0.3 + rimGlow * 0.24);
 
             gl_FragColor = vec4(color, alpha);
           }
@@ -440,7 +441,7 @@ function DigitalGlobeSurface() {
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
-      uInnerColor: { value: [0.62, 0.9, 1] },
+      uInnerColor: { value: [0.72, 0.94, 1] },
       uOuterColor: { value: [0.96, 0.99, 1] },
     }),
     [],
@@ -461,14 +462,14 @@ function DigitalGlobeSurface() {
       vec3 viewNormal = normalize(normalMatrix * sphereNormal);
       // viewNormal.z is strongest at the camera-facing center of the sphere.
       // It lets front dots read brightly while rim/back dots fall away.
-      vFacing = smoothstep(-0.02, 0.68, viewNormal.z);
-      vEdgeFade = smoothstep(-0.08, 0.2, viewNormal.z);
+      vFacing = smoothstep(-0.08, 0.62, viewNormal.z);
+      vEdgeFade = smoothstep(-0.2, 0.08, viewNormal.z);
       vNorthLight = smoothstep(0.06, 0.82, sphereNormal.y);
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.52, 1.16, vFacing);
+      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.48, 1.04, vFacing);
     }
   `;
 
@@ -489,10 +490,10 @@ function DigitalGlobeSurface() {
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
       float frontLight = smoothstep(0.02, 1.0, vFacing);
       float topLandLift = vNorthLight * 0.22;
-      float visibleSideLight = mix(0.34, 1.12 + topLandLift, frontLight);
-      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.88, 1.0, vSeed);
-      vec3 edgeColor = uInnerColor * 0.9;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.92 + frontLight * 0.46 + topLandLift);
+      float visibleSideLight = mix(0.52, 1.28 + topLandLift, frontLight);
+      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.92, 1.0, vSeed);
+      vec3 edgeColor = uInnerColor * 0.94;
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.82 + frontLight * 0.42 + topLandLift);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.012) discard;
@@ -525,7 +526,7 @@ function DigitalGlobeSurface() {
 
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 1.01, 96, 96]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.04} depthWrite={false} />
+        <meshBasicMaterial color="#1f8fff" transparent opacity={0.032} depthWrite={false} />
       </mesh>
 
       <RimAtmosphere />
@@ -772,7 +773,7 @@ function SurfaceGrid() {
     const materialOptions = {
       color: "#2a9fff",
       transparent: true,
-      opacity: 0.034,
+      opacity: 0.022,
       depthTest: true,
       depthWrite: false,
       blending: AdditiveBlending,
@@ -1119,7 +1120,9 @@ function GlobeGroup({
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, DEFAULT_ROTATION_Y, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface />
-          <NetworkRouteLayer prefersReducedMotion={prefersReducedMotion} isCompactViewport={isCompactViewport} />
+          {SHOW_NETWORK_LAYER ? (
+            <NetworkRouteLayer prefersReducedMotion={prefersReducedMotion} isCompactViewport={isCompactViewport} />
+          ) : null}
         </group>
       </group>
     </group>
@@ -1171,7 +1174,7 @@ export function GlobeComponent() {
       <div className="globe-stage">
         <Canvas
           className="globe-canvas"
-          camera={{ position: [0, 0, 7.75], fov: 42 }}
+          camera={{ position: [0, 0, 7.55], fov: 40 }}
           dpr={canvasDpr}
           gl={{ antialias: true, alpha: true }}
         >
