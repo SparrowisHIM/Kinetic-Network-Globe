@@ -26,7 +26,7 @@ import {
 const GLOBE_DEBUG_MODE = false;
 const SHOW_NETWORK_LAYER = false;
 const IDLE_ROTATION_SPEED = 0.045;
-const CENTER_LONGITUDE = 18;
+const CENTER_LONGITUDE = 26;
 const CENTER_LATITUDE = 8;
 const DOT_SPACING = 0.72;
 const DOT_JITTER = DOT_SPACING * 0.09;
@@ -35,7 +35,7 @@ const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 84;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
 // while Africa sits slightly below visual center. Drag still returns the globe upright.
-const DEFAULT_ROTATION_X = -0.075;
+const DEFAULT_ROTATION_X = -0.12;
 const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
@@ -1174,7 +1174,7 @@ export function GlobeComponent() {
       <div className="globe-stage">
         <Canvas
           className="globe-canvas"
-          camera={{ position: [0, 0, 7.55], fov: 40 }}
+          camera={{ position: [0, 0, 7.45], fov: 39 }}
           dpr={canvasDpr}
           gl={{ antialias: true, alpha: true }}
         >
