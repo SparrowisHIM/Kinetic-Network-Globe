@@ -723,13 +723,20 @@ function NetworkCountryMarker({
   const camera = useThree((state) => state.camera);
   const viewportSize = useThree((state) => state.size);
   const [badgeVisible, setBadgeVisible] = useState(false);
+  const [badgePlacement, setBadgePlacement] = useState<"above" | "below">("above");
   const [badgeTexture, setBadgeTexture] = useState<CanvasTexture | null>(null);
   const lastBadgeVisibleRef = useRef(false);
+  const lastBadgePlacementRef = useRef<"above" | "below">("above");
   const badgeScale = useMemo<[number, number, number]>(() => {
     const width = isCompactViewport ? 0.44 : 0.56;
 
     return [width, width * 0.5, 1];
   }, [isCompactViewport]);
+  const badgeYOffset = useMemo(() => {
+    const direction = badgePlacement === "below" ? -1 : 1;
+
+    return ROUTE_NODE_RADIUS * (isCompactViewport ? 5.4 : 6) * direction;
+  }, [badgePlacement, isCompactViewport]);
 
   useEffect(() => {
     let disposed = false;
@@ -767,14 +774,21 @@ function NetworkCountryMarker({
     const screenY = (-projectedPosition.y * 0.5 + 0.5) * viewportSize.height;
     const horizontalMargin = isCompactViewport ? 42 : 58;
     const verticalMargin = isCompactViewport ? 30 : 38;
+    const nextBadgePlacement = screenY < viewportSize.height * 0.24 ? "below" : "above";
+    const topMargin = nextBadgePlacement === "below" ? (isCompactViewport ? 6 : 8) : verticalMargin;
     const hasBadgeRoom =
       screenX > horizontalMargin &&
       screenX < viewportSize.width - horizontalMargin &&
-      screenY > verticalMargin &&
+      screenY > topMargin &&
       screenY < viewportSize.height - verticalMargin;
     const nextBadgeVisible = showBadge && Boolean(badgeTexture) && facingAmount > 0.22 && hasBadgeRoom;
 
     markerRef.current.visible = nextBadgeVisible;
+
+    if (lastBadgePlacementRef.current !== nextBadgePlacement) {
+      lastBadgePlacementRef.current = nextBadgePlacement;
+      setBadgePlacement(nextBadgePlacement);
+    }
 
     if (lastBadgeVisibleRef.current !== nextBadgeVisible) {
       lastBadgeVisibleRef.current = nextBadgeVisible;
@@ -815,7 +829,7 @@ function NetworkCountryMarker({
 
       {badgeTexture ? (
         <sprite
-          position={[0, ROUTE_NODE_RADIUS * (isCompactViewport ? 5.4 : 6), 0]}
+          position={[0, badgeYOffset, 0]}
           scale={badgeScale}
           renderOrder={7}
         >
