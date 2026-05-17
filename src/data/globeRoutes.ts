@@ -59,6 +59,14 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     delay: 0.9,
   },
   {
+    id: "russia-nigeria",
+    from: "russia",
+    to: "nigeria",
+    color: "#8b7cff",
+    accentColor: "#e7e2ff",
+    delay: 0.36,
+  },
+  {
     id: "palestine-saudi-arabia",
     from: "palestine",
     to: "saudi-arabia",
