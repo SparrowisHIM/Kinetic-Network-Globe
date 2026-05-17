@@ -8,6 +8,7 @@ export type NetworkCityId =
   | "san-francisco"
   | "sao-paulo"
   | "lagos"
+  | "palestine"
   | "rome"
   | "moscow"
   | "beijing"
@@ -36,6 +37,7 @@ export const NETWORK_CITIES: NetworkCity[] = [
   { id: "san-francisco", label: "San Francisco", lat: 37.7749, lon: -122.4194, labelPriority: 6 },
   { id: "sao-paulo", label: "Sao Paulo", lat: -23.5505, lon: -46.6333, labelPriority: 5 },
   { id: "lagos", label: "Lagos", lat: 6.5244, lon: 3.3792, labelPriority: 7 },
+  { id: "palestine", label: "Palestine", lat: 31.9038, lon: 35.2034, labelPriority: 8 },
   { id: "rome", label: "Rome", lat: 41.9028, lon: 12.4964, labelPriority: 8 },
   { id: "moscow", label: "Moscow", lat: 55.7558, lon: 37.6173, labelPriority: 9 },
   { id: "beijing", label: "Beijing", lat: 39.9042, lon: 116.4074, labelPriority: 10 },
@@ -98,6 +100,22 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     color: "#45dfff",
     accentColor: "#d6fbff",
     delay: 0.9,
+  },
+  {
+    id: "rome-palestine",
+    from: "rome",
+    to: "palestine",
+    color: "#ff4da6",
+    accentColor: "#ffd5ec",
+    delay: 0.18,
+  },
+  {
+    id: "palestine-dubai",
+    from: "palestine",
+    to: "dubai",
+    color: "#45dfff",
+    accentColor: "#d6fbff",
+    delay: 0.58,
   },
   {
     id: "moscow-beijing",
