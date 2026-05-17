@@ -78,7 +78,6 @@ const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "saudi-arabia",
   "brazil",
   "usa",
-  "italy",
   "japan",
   "spain",
 ];
@@ -91,7 +90,6 @@ const COMPACT_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "saudi-arabia",
   "brazil",
   "usa",
-  "italy",
   "japan",
   "spain",
 ];

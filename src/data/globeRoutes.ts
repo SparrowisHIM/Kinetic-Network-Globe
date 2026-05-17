@@ -9,7 +9,6 @@ export type NetworkCountryId =
   | "saudi-arabia"
   | "brazil"
   | "usa"
-  | "italy"
   | "japan"
   | "spain";
 
@@ -38,20 +37,11 @@ export const NETWORK_COUNTRIES: NetworkCountry[] = [
   { id: "saudi-arabia", label: "Saudi Arabia", flagCode: "sa", lat: 23.8859, lon: 45.0792, labelPriority: 2 },
   { id: "brazil", label: "Brazil", flagCode: "br", lat: -14.235, lon: -51.9253, labelPriority: 6 },
   { id: "usa", label: "USA", flagCode: "us", lat: 37.0902, lon: -95.7129, labelPriority: 5 },
-  { id: "italy", label: "Italy", flagCode: "it", lat: 41.8719, lon: 12.5674, labelPriority: 1 },
   { id: "japan", label: "Japan", flagCode: "jp", lat: 36.2048, lon: 138.2529, labelPriority: 10 },
   { id: "spain", label: "Spain", flagCode: "es", lat: 40.4637, lon: -3.7492, labelPriority: 7 },
 ];
 
 export const NETWORK_ROUTES: NetworkRoute[] = [
-  {
-    id: "usa-italy",
-    from: "usa",
-    to: "italy",
-    color: "#8b7cff",
-    accentColor: "#e5e0ff",
-    delay: 0.32,
-  },
   {
     id: "usa-brazil",
     from: "usa",
@@ -61,36 +51,12 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     delay: 0.64,
   },
   {
-    id: "italy-nigeria",
-    from: "italy",
-    to: "nigeria",
-    color: "#ff9b4a",
-    accentColor: "#fff0cf",
-    delay: 0.78,
-  },
-  {
     id: "nigeria-saudi-arabia",
     from: "nigeria",
     to: "saudi-arabia",
     color: "#45dfff",
     accentColor: "#d6fbff",
     delay: 0.9,
-  },
-  {
-    id: "italy-saudi-arabia",
-    from: "italy",
-    to: "saudi-arabia",
-    color: "#ff9b4a",
-    accentColor: "#ffe3bb",
-    delay: 0,
-  },
-  {
-    id: "italy-palestine",
-    from: "italy",
-    to: "palestine",
-    color: "#ff4da6",
-    accentColor: "#ffd5ec",
-    delay: 0.18,
   },
   {
     id: "palestine-saudi-arabia",
