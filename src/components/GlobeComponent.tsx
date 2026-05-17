@@ -73,6 +73,7 @@ const DESKTOP_LABEL_CITY_IDS: NetworkCityId[] = [
   "dubai",
   "singapore",
   "new-york",
+  "sao-paulo",
   "lagos",
   "palestine",
   "spain",
@@ -82,7 +83,15 @@ const DESKTOP_LABEL_CITY_IDS: NetworkCityId[] = [
   "shanghai",
   "australia",
 ];
-const COMPACT_LABEL_CITY_IDS: NetworkCityId[] = ["london", "dubai", "palestine", "spain", "lagos", "beijing"];
+const COMPACT_LABEL_CITY_IDS: NetworkCityId[] = [
+  "london",
+  "dubai",
+  "palestine",
+  "spain",
+  "sao-paulo",
+  "lagos",
+  "beijing",
+];
 const ROUTE_LABEL_TEXTURE_WIDTH = 512;
 const ROUTE_LABEL_TEXTURE_HEIGHT = 148;
 
