@@ -26,7 +26,7 @@ import {
 const GLOBE_DEBUG_MODE = false;
 const SHOW_NETWORK_LAYER = false;
 const IDLE_ROTATION_SPEED = 0.045;
-const CENTER_LONGITUDE = 26;
+const CENTER_LONGITUDE = 20;
 const CENTER_LATITUDE = 8;
 const DOT_SPACING = 0.72;
 const DOT_JITTER = DOT_SPACING * 0.09;
