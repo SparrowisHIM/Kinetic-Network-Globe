@@ -26,16 +26,16 @@ import {
 const GLOBE_DEBUG_MODE = false;
 const SHOW_NETWORK_LAYER = false;
 const IDLE_ROTATION_SPEED = 0.045;
-const CENTER_LONGITUDE = 20;
+const CENTER_LONGITUDE = 17;
 const CENTER_LATITUDE = 8;
 const DOT_SPACING = 0.72;
 const DOT_JITTER = DOT_SPACING * 0.09;
-const DOT_SIZE = 1.08;
+const DOT_SIZE = 1.16;
 const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 84;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
 // while Africa sits slightly below visual center. Drag still returns the globe upright.
-const DEFAULT_ROTATION_X = -0.12;
+const DEFAULT_ROTATION_X = -0.095;
 const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
@@ -441,7 +441,7 @@ function DigitalGlobeSurface() {
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
-      uInnerColor: { value: [0.72, 0.94, 1] },
+      uInnerColor: { value: [0.84, 0.97, 1] },
       uOuterColor: { value: [0.96, 0.99, 1] },
     }),
     [],
@@ -462,14 +462,14 @@ function DigitalGlobeSurface() {
       vec3 viewNormal = normalize(normalMatrix * sphereNormal);
       // viewNormal.z is strongest at the camera-facing center of the sphere.
       // It lets front dots read brightly while rim/back dots fall away.
-      vFacing = smoothstep(-0.08, 0.62, viewNormal.z);
-      vEdgeFade = smoothstep(-0.2, 0.08, viewNormal.z);
-      vNorthLight = smoothstep(0.06, 0.82, sphereNormal.y);
+      vFacing = smoothstep(-0.12, 0.58, viewNormal.z);
+      vEdgeFade = smoothstep(-0.28, 0.04, viewNormal.z);
+      vNorthLight = smoothstep(0.02, 0.78, sphereNormal.y);
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.48, 1.04, vFacing);
+      gl_PointSize = uPointSize * (6.0 / -mvPosition.z) * mix(0.5, 1.08, vFacing);
     }
   `;
 
@@ -489,14 +489,14 @@ function DigitalGlobeSurface() {
       float dotMask = smoothstep(0.5, 0.16, distanceFromCenter);
       float core = smoothstep(0.22, 0.0, distanceFromCenter);
       float frontLight = smoothstep(0.02, 1.0, vFacing);
-      float topLandLift = vNorthLight * 0.22;
-      float visibleSideLight = mix(0.52, 1.28 + topLandLift, frontLight);
-      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.92, 1.0, vSeed);
-      vec3 edgeColor = uInnerColor * 0.94;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.82 + frontLight * 0.42 + topLandLift);
+      float topLandLift = vNorthLight * 0.26;
+      float visibleSideLight = mix(0.76, 1.5 + topLandLift, frontLight);
+      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed);
+      vec3 edgeColor = uInnerColor * 0.98;
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
-      if (alpha < 0.012) discard;
+      if (alpha < 0.008) discard;
       gl_FragColor = vec4(color, alpha);
     }
   `;
