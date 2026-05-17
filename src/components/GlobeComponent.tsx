@@ -2,10 +2,10 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber"
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
 import {
-  NETWORK_CITIES,
+  NETWORK_COUNTRIES,
   NETWORK_ROUTES,
-  type NetworkCity,
-  type NetworkCityId,
+  type NetworkCountry,
+  type NetworkCountryId,
   type NetworkRoute,
 } from "../data/globeRoutes";
 import { projectLonLatToSphere } from "../utils/sphereProjection";
@@ -24,7 +24,7 @@ import {
 } from "three";
 
 const GLOBE_DEBUG_MODE = false;
-const SHOW_NETWORK_LAYER = false;
+const SHOW_NETWORK_LAYER = true;
 const IDLE_ROTATION_SPEED = 0.045;
 const CENTER_LONGITUDE = 17;
 const CENTER_LATITUDE = 8;
@@ -69,29 +69,31 @@ const ROUTE_LINE_RADIUS = 0.0046;
 const ROUTE_PULSE_SPEED = 0.115;
 const ROUTE_PULSE_RADIUS = 0.026;
 const ROUTE_NODE_RADIUS = 0.024;
-const DESKTOP_LABEL_CITY_IDS: NetworkCityId[] = [
-  "london",
-  "dubai",
-  "singapore",
-  "new-york",
-  "sao-paulo",
-  "lagos",
-  "palestine",
-  "spain",
-  "rome",
-  "moscow",
-  "beijing",
-  "shanghai",
+const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
-];
-const COMPACT_LABEL_CITY_IDS: NetworkCityId[] = [
-  "london",
-  "dubai",
+  "nigeria",
   "palestine",
+  "china",
+  "russia",
+  "saudi-arabia",
+  "brazil",
+  "usa",
+  "italy",
+  "japan",
   "spain",
-  "sao-paulo",
-  "lagos",
-  "beijing",
+];
+const COMPACT_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
+  "australia",
+  "nigeria",
+  "palestine",
+  "china",
+  "russia",
+  "saudi-arabia",
+  "brazil",
+  "usa",
+  "italy",
+  "japan",
+  "spain",
 ];
 const ROUTE_LABEL_TEXTURE_WIDTH = 512;
 const ROUTE_LABEL_TEXTURE_HEIGHT = 148;
@@ -170,8 +172,8 @@ function createRouteCurve(from: LandPoint, to: LandPoint) {
   return new QuadraticBezierCurve3(start, controlPoint, end);
 }
 
-function getCityMap() {
-  return new Map(NETWORK_CITIES.map((city) => [city.id, city]));
+function getCountryMap() {
+  return new Map(NETWORK_COUNTRIES.map((country) => [country.id, country]));
 }
 
 function getWorldFacingAmount(object: Group, cameraPosition: Vector3) {
@@ -198,7 +200,17 @@ function drawRoundedRect(context: CanvasRenderingContext2D, width: number, heigh
   context.closePath();
 }
 
-function createRouteLabelTexture(label: string) {
+function loadFlagImage(flagCode: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = `/flags/${flagCode}.svg`;
+  });
+}
+
+async function createFlagBadgeTexture(country: NetworkCountry) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
@@ -207,35 +219,55 @@ function createRouteLabelTexture(label: string) {
 
   if (!context) return null;
 
+  const flagImage = await loadFlagImage(country.flagCode);
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  const labelWidth = clamp(label.length * 28 + 106, 250, 430);
-  const labelHeight = 68;
-  const left = centerX - labelWidth / 2;
-  const top = centerY - labelHeight / 2;
+  const badgeWidth = 164;
+  const badgeHeight = 82;
+  const badgeRadius = 18;
+  const left = centerX - badgeWidth / 2;
+  const top = centerY - badgeHeight / 2;
+  const flagInset = 13;
+  const flagLeft = left + flagInset;
+  const flagTop = top + flagInset;
+  const flagWidth = badgeWidth - flagInset * 2;
+  const flagHeight = badgeHeight - flagInset * 2;
+  const flagRadius = 11;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.shadowColor = "rgba(45, 194, 255, 0.28)";
-  context.shadowBlur = 28;
-  context.fillStyle = "rgba(3, 10, 22, 0.82)";
+  context.shadowColor = "rgba(45, 194, 255, 0.32)";
+  context.shadowBlur = 24;
+  context.fillStyle = "rgba(3, 10, 22, 0.72)";
   context.translate(left, top);
-  drawRoundedRect(context, labelWidth, labelHeight, 12);
+  drawRoundedRect(context, badgeWidth, badgeHeight, badgeRadius);
   context.fill();
   context.setTransform(1, 0, 0, 1, 0, 0);
 
   context.shadowBlur = 0;
-  context.strokeStyle = "rgba(148, 226, 255, 0.28)";
-  context.lineWidth = 2;
+  const borderGradient = context.createLinearGradient(left, top, left + badgeWidth, top + badgeHeight);
+  borderGradient.addColorStop(0, "rgba(255, 255, 255, 0.68)");
+  borderGradient.addColorStop(0.42, "rgba(69, 223, 255, 0.5)");
+  borderGradient.addColorStop(1, "rgba(255, 77, 166, 0.48)");
+  context.strokeStyle = borderGradient;
+  context.lineWidth = 3;
   context.translate(left, top);
-  drawRoundedRect(context, labelWidth, labelHeight, 12);
+  drawRoundedRect(context, badgeWidth, badgeHeight, badgeRadius);
   context.stroke();
   context.setTransform(1, 0, 0, 1, 0, 0);
 
-  context.fillStyle = "rgba(243, 251, 255, 0.96)";
-  context.font = "700 27px 'Segoe UI', sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(label, centerX, centerY + 1);
+  context.save();
+  context.translate(flagLeft, flagTop);
+  drawRoundedRect(context, flagWidth, flagHeight, flagRadius);
+  context.clip();
+  context.drawImage(flagImage, 0, 0, flagWidth, flagHeight);
+  context.restore();
+
+  context.strokeStyle = "rgba(224, 246, 255, 0.34)";
+  context.lineWidth = 1.6;
+  context.translate(flagLeft, flagTop);
+  drawRoundedRect(context, flagWidth, flagHeight, flagRadius);
+  context.stroke();
+  context.setTransform(1, 0, 0, 1, 0, 0);
 
   const texture = new CanvasTexture(canvas);
   texture.minFilter = LinearFilter;
@@ -541,27 +573,27 @@ function NetworkRouteLayer({
   prefersReducedMotion: boolean;
   isCompactViewport: boolean;
 }) {
-  const cityById = useMemo(getCityMap, []);
-  const labelCityIds = useMemo(
-    () => new Set(isCompactViewport ? COMPACT_LABEL_CITY_IDS : DESKTOP_LABEL_CITY_IDS),
+  const countryById = useMemo(getCountryMap, []);
+  const badgeCountryIds = useMemo(
+    () => new Set(isCompactViewport ? COMPACT_BADGE_COUNTRY_IDS : DESKTOP_BADGE_COUNTRY_IDS),
     [isCompactViewport],
   );
-  const cityPositions = useMemo(
+  const countryPositions = useMemo(
     () =>
-      NETWORK_CITIES.map((city) => ({
-        city,
-        position: sphereCoordinateToVector(city),
+      NETWORK_COUNTRIES.map((country) => ({
+        country,
+        position: sphereCoordinateToVector(country),
       })),
     [],
   );
   const routeCurves = useMemo<RouteCurveModel[]>(
     () =>
       NETWORK_ROUTES.map((route) => {
-        const from = cityById.get(route.from);
-        const to = cityById.get(route.to);
+        const from = countryById.get(route.from);
+        const to = countryById.get(route.to);
 
         if (!from || !to) {
-          throw new Error(`Missing city for route ${route.id}`);
+          throw new Error(`Missing country for route ${route.id}`);
         }
 
         return {
@@ -569,7 +601,7 @@ function NetworkRouteLayer({
           curve: createRouteCurve(from, to),
         };
       }),
-    [cityById],
+    [countryById],
   );
 
   return (
@@ -578,12 +610,12 @@ function NetworkRouteLayer({
         <NetworkRouteArc key={route.id} route={route} curve={curve} prefersReducedMotion={prefersReducedMotion} />
       ))}
 
-      {cityPositions.map(({ city, position }) => (
-        <NetworkCityMarker
-          key={city.id}
-          city={city}
+      {countryPositions.map(({ country, position }) => (
+        <NetworkCountryMarker
+          key={country.id}
+          country={country}
           position={position}
-          showLabel={labelCityIds.has(city.id)}
+          showBadge={badgeCountryIds.has(country.id)}
           isCompactViewport={isCompactViewport}
         />
       ))}
@@ -676,52 +708,85 @@ function NetworkRouteArc({
   );
 }
 
-function NetworkCityMarker({
-  city,
+function NetworkCountryMarker({
+  country,
   position,
-  showLabel,
+  showBadge,
   isCompactViewport,
 }: {
-  city: NetworkCity;
+  country: NetworkCountry;
   position: Vector3;
-  showLabel: boolean;
+  showBadge: boolean;
   isCompactViewport: boolean;
 }) {
   const markerRef = useRef<Group>(null);
   const camera = useThree((state) => state.camera);
-  const [labelVisible, setLabelVisible] = useState(false);
-  const lastLabelVisibleRef = useRef(false);
-  const labelTexture = useMemo(
-    () => (showLabel && typeof document !== "undefined" ? createRouteLabelTexture(city.label.toUpperCase()) : null),
-    [city.label, showLabel],
-  );
-  const labelScale = useMemo<[number, number, number]>(() => {
-    const width = clamp(city.label.length * 0.12 + 0.56, 0.92, 1.48) * (isCompactViewport ? 0.78 : 1);
+  const viewportSize = useThree((state) => state.size);
+  const [badgeVisible, setBadgeVisible] = useState(false);
+  const [badgeTexture, setBadgeTexture] = useState<CanvasTexture | null>(null);
+  const lastBadgeVisibleRef = useRef(false);
+  const badgeScale = useMemo<[number, number, number]>(() => {
+    const width = isCompactViewport ? 0.52 : 0.66;
 
-    return [width, width * 0.29, 1];
-  }, [city.label.length, isCompactViewport]);
+    return [width, width * 0.5, 1];
+  }, [isCompactViewport]);
 
-  useEffect(() => () => labelTexture?.dispose(), [labelTexture]);
+  useEffect(() => {
+    let disposed = false;
+
+    setBadgeTexture(null);
+
+    if (!showBadge || typeof document === "undefined") return;
+
+    void createFlagBadgeTexture(country).then((texture) => {
+      if (!texture) return;
+
+      if (disposed) {
+        texture.dispose();
+        return;
+      }
+
+      setBadgeTexture(texture);
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, [country, showBadge]);
+
+  useEffect(() => () => badgeTexture?.dispose(), [badgeTexture]);
 
   useFrame(() => {
     if (!markerRef.current) return;
 
     const facingAmount = getWorldFacingAmount(markerRef.current, camera.position);
     const markerVisible = facingAmount > -0.08;
-    const nextLabelVisible = showLabel && facingAmount > 0.22;
+    const worldPosition = new Vector3();
+    markerRef.current.getWorldPosition(worldPosition);
+    const projectedPosition = worldPosition.project(camera);
+    const screenX = (projectedPosition.x * 0.5 + 0.5) * viewportSize.width;
+    const screenY = (-projectedPosition.y * 0.5 + 0.5) * viewportSize.height;
+    const horizontalMargin = isCompactViewport ? 42 : 58;
+    const verticalMargin = isCompactViewport ? 30 : 38;
+    const hasBadgeRoom =
+      screenX > horizontalMargin &&
+      screenX < viewportSize.width - horizontalMargin &&
+      screenY > verticalMargin &&
+      screenY < viewportSize.height - verticalMargin;
+    const nextBadgeVisible = showBadge && Boolean(badgeTexture) && facingAmount > 0.22 && hasBadgeRoom;
 
     markerRef.current.visible = markerVisible;
 
-    if (lastLabelVisibleRef.current !== nextLabelVisible) {
-      lastLabelVisibleRef.current = nextLabelVisible;
-      setLabelVisible(nextLabelVisible);
+    if (lastBadgeVisibleRef.current !== nextBadgeVisible) {
+      lastBadgeVisibleRef.current = nextBadgeVisible;
+      setBadgeVisible(nextBadgeVisible);
     }
   });
 
   return (
     <group
       ref={markerRef}
-      name={`network-city-${city.id}`}
+      name={`network-country-${country.id}`}
       position={[position.x, position.y, position.z]}
       renderOrder={5}
     >
@@ -749,16 +814,16 @@ function NetworkCityMarker({
         />
       </mesh>
 
-      {labelTexture ? (
+      {badgeTexture ? (
         <sprite
-          position={[0, ROUTE_NODE_RADIUS * (isCompactViewport ? 6.4 : 7.2), 0]}
-          scale={labelScale}
+          position={[0, ROUTE_NODE_RADIUS * (isCompactViewport ? 5.6 : 6.2), 0]}
+          scale={badgeScale}
           renderOrder={7}
         >
           <spriteMaterial
-            map={labelTexture}
+            map={badgeTexture}
             transparent
-            opacity={labelVisible ? 0.96 : 0}
+            opacity={badgeVisible ? 0.98 : 0}
             depthTest={false}
             depthWrite={false}
           />

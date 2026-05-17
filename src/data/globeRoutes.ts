@@ -1,122 +1,101 @@
 import type { SphereCoordinate } from "../utils/sphereProjection";
 
-export type NetworkCityId =
-  | "london"
-  | "dubai"
-  | "singapore"
-  | "new-york"
-  | "san-francisco"
-  | "sao-paulo"
-  | "lagos"
+export type NetworkCountryId =
+  | "australia"
+  | "nigeria"
   | "palestine"
-  | "spain"
-  | "rome"
-  | "moscow"
-  | "beijing"
-  | "shanghai"
-  | "australia";
+  | "china"
+  | "russia"
+  | "saudi-arabia"
+  | "brazil"
+  | "usa"
+  | "italy"
+  | "japan"
+  | "spain";
 
-export type NetworkCity = SphereCoordinate & {
-  id: NetworkCityId;
+export type NetworkCountry = SphereCoordinate & {
+  id: NetworkCountryId;
   label: string;
+  flagCode: string;
   labelPriority: number;
 };
 
 export type NetworkRoute = {
   id: string;
-  from: NetworkCityId;
-  to: NetworkCityId;
+  from: NetworkCountryId;
+  to: NetworkCountryId;
   color: string;
   accentColor: string;
   delay: number;
 };
 
-export const NETWORK_CITIES: NetworkCity[] = [
-  { id: "london", label: "London", lat: 51.5072, lon: -0.1276, labelPriority: 1 },
-  { id: "dubai", label: "Dubai", lat: 25.2048, lon: 55.2708, labelPriority: 2 },
-  { id: "singapore", label: "Singapore", lat: 1.3521, lon: 103.8198, labelPriority: 3 },
-  { id: "new-york", label: "New York", lat: 40.7128, lon: -74.006, labelPriority: 4 },
-  { id: "san-francisco", label: "San Francisco", lat: 37.7749, lon: -122.4194, labelPriority: 6 },
-  { id: "sao-paulo", label: "Sao Paulo", lat: -23.5505, lon: -46.6333, labelPriority: 5 },
-  { id: "lagos", label: "Lagos", lat: 6.5244, lon: 3.3792, labelPriority: 7 },
-  { id: "palestine", label: "Palestine", lat: 31.9522, lon: 35.2332, labelPriority: 8 },
-  { id: "spain", label: "Spain", lat: 40.4637, lon: -3.7492, labelPriority: 9 },
-  { id: "rome", label: "Rome", lat: 41.9028, lon: 12.4964, labelPriority: 8 },
-  { id: "moscow", label: "Moscow", lat: 55.7558, lon: 37.6173, labelPriority: 9 },
-  { id: "beijing", label: "Beijing", lat: 39.9042, lon: 116.4074, labelPriority: 10 },
-  { id: "shanghai", label: "Shanghai", lat: 31.2304, lon: 121.4737, labelPriority: 11 },
-  { id: "australia", label: "Australia", lat: -25.2744, lon: 133.7751, labelPriority: 12 },
+export const NETWORK_COUNTRIES: NetworkCountry[] = [
+  { id: "australia", label: "Australia", flagCode: "au", lat: -25.2744, lon: 133.7751, labelPriority: 11 },
+  { id: "nigeria", label: "Nigeria", flagCode: "ng", lat: 9.082, lon: 8.6753, labelPriority: 4 },
+  { id: "palestine", label: "Palestine", flagCode: "ps", lat: 31.9522, lon: 35.2332, labelPriority: 3 },
+  { id: "china", label: "China", flagCode: "cn", lat: 35.8617, lon: 104.1954, labelPriority: 8 },
+  { id: "russia", label: "Russia", flagCode: "ru", lat: 61.524, lon: 105.3188, labelPriority: 9 },
+  { id: "saudi-arabia", label: "Saudi Arabia", flagCode: "sa", lat: 23.8859, lon: 45.0792, labelPriority: 2 },
+  { id: "brazil", label: "Brazil", flagCode: "br", lat: -14.235, lon: -51.9253, labelPriority: 6 },
+  { id: "usa", label: "USA", flagCode: "us", lat: 37.0902, lon: -95.7129, labelPriority: 5 },
+  { id: "italy", label: "Italy", flagCode: "it", lat: 41.8719, lon: 12.5674, labelPriority: 1 },
+  { id: "japan", label: "Japan", flagCode: "jp", lat: 36.2048, lon: 138.2529, labelPriority: 10 },
+  { id: "spain", label: "Spain", flagCode: "es", lat: 40.4637, lon: -3.7492, labelPriority: 7 },
 ];
 
 export const NETWORK_ROUTES: NetworkRoute[] = [
   {
-    id: "london-dubai",
-    from: "london",
-    to: "dubai",
-    color: "#ff9b4a",
-    accentColor: "#ffe3bb",
-    delay: 0,
-  },
-  {
-    id: "dubai-singapore",
-    from: "dubai",
-    to: "singapore",
-    color: "#45dfff",
-    accentColor: "#d6fbff",
-    delay: 0.16,
-  },
-  {
-    id: "new-york-london",
-    from: "new-york",
-    to: "london",
+    id: "usa-italy",
+    from: "usa",
+    to: "italy",
     color: "#8b7cff",
     accentColor: "#e5e0ff",
     delay: 0.32,
   },
   {
-    id: "san-francisco-new-york",
-    from: "san-francisco",
-    to: "new-york",
-    color: "#45dfff",
-    accentColor: "#c8f6ff",
-    delay: 0.48,
-  },
-  {
-    id: "new-york-sao-paulo",
-    from: "new-york",
-    to: "sao-paulo",
+    id: "usa-brazil",
+    from: "usa",
+    to: "brazil",
     color: "#ff4da6",
     accentColor: "#ffd5ec",
     delay: 0.64,
   },
   {
-    id: "rome-lagos",
-    from: "rome",
-    to: "lagos",
+    id: "italy-nigeria",
+    from: "italy",
+    to: "nigeria",
     color: "#ff9b4a",
     accentColor: "#fff0cf",
     delay: 0.78,
   },
   {
-    id: "lagos-dubai",
-    from: "lagos",
-    to: "dubai",
+    id: "nigeria-saudi-arabia",
+    from: "nigeria",
+    to: "saudi-arabia",
     color: "#45dfff",
     accentColor: "#d6fbff",
     delay: 0.9,
   },
   {
-    id: "rome-palestine",
-    from: "rome",
+    id: "italy-saudi-arabia",
+    from: "italy",
+    to: "saudi-arabia",
+    color: "#ff9b4a",
+    accentColor: "#ffe3bb",
+    delay: 0,
+  },
+  {
+    id: "italy-palestine",
+    from: "italy",
     to: "palestine",
     color: "#ff4da6",
     accentColor: "#ffd5ec",
     delay: 0.18,
   },
   {
-    id: "palestine-dubai",
+    id: "palestine-saudi-arabia",
     from: "palestine",
-    to: "dubai",
+    to: "saudi-arabia",
     color: "#45dfff",
     accentColor: "#d6fbff",
     delay: 0.58,
@@ -130,35 +109,35 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     delay: 0.72,
   },
   {
-    id: "moscow-beijing",
-    from: "moscow",
-    to: "beijing",
+    id: "saudi-arabia-japan",
+    from: "saudi-arabia",
+    to: "japan",
+    color: "#45dfff",
+    accentColor: "#d6fbff",
+    delay: 0.16,
+  },
+  {
+    id: "russia-china",
+    from: "russia",
+    to: "china",
     color: "#8b7cff",
     accentColor: "#e7e2ff",
     delay: 0.08,
   },
   {
-    id: "beijing-shanghai",
-    from: "beijing",
-    to: "shanghai",
+    id: "china-japan",
+    from: "china",
+    to: "japan",
     color: "#45dfff",
     accentColor: "#c8f6ff",
     delay: 0.24,
   },
   {
-    id: "shanghai-singapore",
-    from: "shanghai",
-    to: "singapore",
+    id: "japan-australia",
+    from: "japan",
+    to: "australia",
     color: "#ff4da6",
     accentColor: "#ffd5ec",
     delay: 0.4,
-  },
-  {
-    id: "singapore-australia",
-    from: "singapore",
-    to: "australia",
-    color: "#45dfff",
-    accentColor: "#d6fbff",
-    delay: 0.56,
   },
 ];
