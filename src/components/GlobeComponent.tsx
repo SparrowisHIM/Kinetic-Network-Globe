@@ -65,10 +65,10 @@ const SURFACE_GRID_LON_STEP = 20;
 const SURFACE_GRID_SEGMENT_STEP = 2;
 const ROUTE_SURFACE_RADIUS = GLOBE_RADIUS + 0.05;
 const ROUTE_CURVE_SEGMENTS = 112;
-const ROUTE_LINE_RADIUS = 0.0046;
+const ROUTE_LINE_RADIUS = 0.0039;
 const ROUTE_PULSE_SPEED = 0.115;
-const ROUTE_PULSE_RADIUS = 0.026;
-const ROUTE_NODE_RADIUS = 0.024;
+const ROUTE_PULSE_RADIUS = 0.021;
+const ROUTE_NODE_RADIUS = 0.019;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
   "nigeria",
@@ -633,6 +633,7 @@ function NetworkRouteArc({
   prefersReducedMotion: boolean;
 }) {
   const pulseRef = useRef<Group>(null);
+  const camera = useThree((state) => state.camera);
   const color = useMemo(() => new Color(route.color), [route.color]);
   const accentColor = useMemo(() => new Color(route.accentColor), [route.accentColor]);
 
@@ -644,12 +645,13 @@ function NetworkRouteArc({
       return;
     }
 
-    pulseRef.current.visible = true;
-
     const progress = (clock.elapsedTime * ROUTE_PULSE_SPEED + route.delay) % 1;
     const easedProgress = 0.5 - Math.cos(progress * Math.PI) * 0.5;
     const pulsePosition = curve.getPointAt(easedProgress);
+    const pulseFacing = pulsePosition.clone().normalize().dot(camera.position.clone().normalize());
+    const pulseRimDistance = Math.hypot(pulsePosition.x, pulsePosition.y) / ROUTE_SURFACE_RADIUS;
 
+    pulseRef.current.visible = pulseFacing > 0.55 && pulseRimDistance < 0.72;
     pulseRef.current.position.copy(pulsePosition);
   });
 
@@ -660,7 +662,7 @@ function NetworkRouteArc({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.34}
+          opacity={0.24}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -672,7 +674,7 @@ function NetworkRouteArc({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.075}
+          opacity={0.045}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -685,7 +687,7 @@ function NetworkRouteArc({
           <meshBasicMaterial
             color={accentColor}
             transparent
-            opacity={0.92}
+            opacity={0.68}
             depthTest
             depthWrite={false}
             blending={AdditiveBlending}
@@ -697,7 +699,7 @@ function NetworkRouteArc({
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.18}
+            opacity={0.1}
             depthTest
             depthWrite={false}
             blending={AdditiveBlending}
@@ -726,7 +728,7 @@ function NetworkCountryMarker({
   const [badgeTexture, setBadgeTexture] = useState<CanvasTexture | null>(null);
   const lastBadgeVisibleRef = useRef(false);
   const badgeScale = useMemo<[number, number, number]>(() => {
-    const width = isCompactViewport ? 0.52 : 0.66;
+    const width = isCompactViewport ? 0.44 : 0.56;
 
     return [width, width * 0.5, 1];
   }, [isCompactViewport]);
@@ -760,7 +762,6 @@ function NetworkCountryMarker({
     if (!markerRef.current) return;
 
     const facingAmount = getWorldFacingAmount(markerRef.current, camera.position);
-    const markerVisible = facingAmount > -0.08;
     const worldPosition = new Vector3();
     markerRef.current.getWorldPosition(worldPosition);
     const projectedPosition = worldPosition.project(camera);
@@ -775,7 +776,7 @@ function NetworkCountryMarker({
       screenY < viewportSize.height - verticalMargin;
     const nextBadgeVisible = showBadge && Boolean(badgeTexture) && facingAmount > 0.22 && hasBadgeRoom;
 
-    markerRef.current.visible = markerVisible;
+    markerRef.current.visible = nextBadgeVisible;
 
     if (lastBadgeVisibleRef.current !== nextBadgeVisible) {
       lastBadgeVisibleRef.current = nextBadgeVisible;
@@ -795,7 +796,7 @@ function NetworkCountryMarker({
         <meshBasicMaterial
           color="#c8f6ff"
           transparent
-          opacity={0.86}
+          opacity={0.7}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -807,7 +808,7 @@ function NetworkCountryMarker({
         <meshBasicMaterial
           color="#45dfff"
           transparent
-          opacity={0.12}
+          opacity={0.08}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -816,7 +817,7 @@ function NetworkCountryMarker({
 
       {badgeTexture ? (
         <sprite
-          position={[0, ROUTE_NODE_RADIUS * (isCompactViewport ? 5.6 : 6.2), 0]}
+          position={[0, ROUTE_NODE_RADIUS * (isCompactViewport ? 5.4 : 6), 0]}
           scale={badgeScale}
           renderOrder={7}
         >

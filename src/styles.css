@@ -244,6 +244,7 @@ body {
   aspect-ratio: 1;
   cursor: grab;
   touch-action: none;
+  transform: translateY(clamp(0.75rem, 2.6svh, 1.65rem));
   user-select: none;
   -webkit-user-select: none;
 }
@@ -277,7 +278,7 @@ body {
 
 @media (min-width: 1280px) and (min-height: 760px) {
   .globe-stage {
-    width: min(78vw, 78svh, 880px);
+    width: min(78vw, 74svh, 840px);
   }
 }
 
