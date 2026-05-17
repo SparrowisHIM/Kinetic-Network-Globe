@@ -39,13 +39,13 @@ export const NETWORK_CITIES: NetworkCity[] = [
   { id: "san-francisco", label: "San Francisco", lat: 37.7749, lon: -122.4194, labelPriority: 6 },
   { id: "sao-paulo", label: "Sao Paulo", lat: -23.5505, lon: -46.6333, labelPriority: 5 },
   { id: "lagos", label: "Lagos", lat: 6.5244, lon: 3.3792, labelPriority: 7 },
-  { id: "palestine", label: "Palestine", lat: 31.9038, lon: 35.2034, labelPriority: 8 },
-  { id: "spain", label: "Spain", lat: 40.4168, lon: -3.7038, labelPriority: 9 },
+  { id: "palestine", label: "Palestine", lat: 31.9522, lon: 35.2332, labelPriority: 8 },
+  { id: "spain", label: "Spain", lat: 40.4637, lon: -3.7492, labelPriority: 9 },
   { id: "rome", label: "Rome", lat: 41.9028, lon: 12.4964, labelPriority: 8 },
   { id: "moscow", label: "Moscow", lat: 55.7558, lon: 37.6173, labelPriority: 9 },
   { id: "beijing", label: "Beijing", lat: 39.9042, lon: 116.4074, labelPriority: 10 },
   { id: "shanghai", label: "Shanghai", lat: 31.2304, lon: 121.4737, labelPriority: 11 },
-  { id: "australia", label: "Australia", lat: -33.8688, lon: 151.2093, labelPriority: 12 },
+  { id: "australia", label: "Australia", lat: -25.2744, lon: 133.7751, labelPriority: 12 },
 ];
 
 export const NETWORK_ROUTES: NetworkRoute[] = [
