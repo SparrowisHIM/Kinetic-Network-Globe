@@ -33,7 +33,7 @@ export const NETWORK_COUNTRIES: NetworkCountry[] = [
   { id: "nigeria", label: "Nigeria", flagCode: "ng", lat: 9.082, lon: 8.6753, labelPriority: 4 },
   { id: "palestine", label: "Palestine", flagCode: "ps", lat: 31.9522, lon: 35.2332, labelPriority: 3 },
   { id: "china", label: "China", flagCode: "cn", lat: 35.8617, lon: 104.1954, labelPriority: 8 },
-  { id: "russia", label: "Russia", flagCode: "ru", lat: 61.524, lon: 105.3188, labelPriority: 9 },
+  { id: "russia", label: "Russia", flagCode: "ru", lat: 56.0106, lon: 92.8526, labelPriority: 9 },
   { id: "saudi-arabia", label: "Saudi Arabia", flagCode: "sa", lat: 23.8859, lon: 45.0792, labelPriority: 2 },
   { id: "brazil", label: "Brazil", flagCode: "br", lat: -14.235, lon: -51.9253, labelPriority: 6 },
   { id: "usa", label: "USA", flagCode: "us", lat: 37.0902, lon: -95.7129, labelPriority: 5 },
