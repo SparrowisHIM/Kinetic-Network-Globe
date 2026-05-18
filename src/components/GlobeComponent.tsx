@@ -39,11 +39,11 @@ const DEFAULT_ROTATION_X = -0.095;
 const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
-const VERTICAL_TILT_SENSITIVITY = 0.00055;
-// Vertical drag is intentionally tiny and temporary: enough tactile feedback,
-// never enough to pull the pole toward the equator or corrupt the upright Earth view.
-const MIN_INSPECTION_TILT = -0.14;
-const MAX_INSPECTION_TILT = 0.14;
+const VERTICAL_TILT_SENSITIVITY = 0.00165;
+// Vertical drag stays temporary, but now gives enough inspection range to reveal
+// northern hubs such as Russia without changing the default upright Earth view.
+const MIN_INSPECTION_TILT = -0.42;
+const MAX_INSPECTION_TILT = 0.42;
 const MAX_HORIZONTAL_VELOCITY = 2.2;
 const VELOCITY_SMOOTHING = 0.28;
 const MOMENTUM_FRICTION = 0.88;
@@ -723,20 +723,13 @@ function NetworkCountryMarker({
   const camera = useThree((state) => state.camera);
   const viewportSize = useThree((state) => state.size);
   const [badgeVisible, setBadgeVisible] = useState(false);
-  const [badgePlacement, setBadgePlacement] = useState<"above" | "below">("above");
   const [badgeTexture, setBadgeTexture] = useState<CanvasTexture | null>(null);
   const lastBadgeVisibleRef = useRef(false);
-  const lastBadgePlacementRef = useRef<"above" | "below">("above");
   const badgeScale = useMemo<[number, number, number]>(() => {
     const width = isCompactViewport ? 0.44 : 0.56;
 
     return [width, width * 0.5, 1];
   }, [isCompactViewport]);
-  const badgeYOffset = useMemo(() => {
-    const direction = badgePlacement === "below" ? -1 : 1;
-
-    return ROUTE_NODE_RADIUS * (isCompactViewport ? 5.4 : 6) * direction;
-  }, [badgePlacement, isCompactViewport]);
 
   useEffect(() => {
     let disposed = false;
@@ -774,21 +767,14 @@ function NetworkCountryMarker({
     const screenY = (-projectedPosition.y * 0.5 + 0.5) * viewportSize.height;
     const horizontalMargin = isCompactViewport ? 42 : 58;
     const verticalMargin = isCompactViewport ? 30 : 38;
-    const nextBadgePlacement = screenY < viewportSize.height * 0.24 ? "below" : "above";
-    const topMargin = nextBadgePlacement === "below" ? (isCompactViewport ? 6 : 8) : verticalMargin;
     const hasBadgeRoom =
       screenX > horizontalMargin &&
       screenX < viewportSize.width - horizontalMargin &&
-      screenY > topMargin &&
+      screenY > verticalMargin &&
       screenY < viewportSize.height - verticalMargin;
     const nextBadgeVisible = showBadge && Boolean(badgeTexture) && facingAmount > 0.22 && hasBadgeRoom;
 
     markerRef.current.visible = nextBadgeVisible;
-
-    if (lastBadgePlacementRef.current !== nextBadgePlacement) {
-      lastBadgePlacementRef.current = nextBadgePlacement;
-      setBadgePlacement(nextBadgePlacement);
-    }
 
     if (lastBadgeVisibleRef.current !== nextBadgeVisible) {
       lastBadgeVisibleRef.current = nextBadgeVisible;
@@ -829,7 +815,7 @@ function NetworkCountryMarker({
 
       {badgeTexture ? (
         <sprite
-          position={[0, badgeYOffset, 0]}
+          position={[0, ROUTE_NODE_RADIUS * (isCompactViewport ? 5.4 : 6), 0]}
           scale={badgeScale}
           renderOrder={7}
         >
