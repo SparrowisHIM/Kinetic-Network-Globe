@@ -39,17 +39,16 @@ const DEFAULT_ROTATION_X = -0.095;
 const DEFAULT_ROTATION_Y = -(CENTER_LONGITUDE * Math.PI) / 180;
 const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
-const VERTICAL_TILT_SENSITIVITY = 0.00165;
-// Vertical drag stays temporary, but now gives enough inspection range to reveal
-// northern hubs without changing the default upright Earth view.
-const MIN_INSPECTION_TILT = -0.42;
-const MAX_INSPECTION_TILT = 0.42;
+const VERTICAL_DRAG_SENSITIVITY = 0.00165;
+// Vertical drag is part of the main globe rotation, so a drag direction maps
+// consistently wherever the user grabs the sphere.
+const MIN_VERTICAL_ROTATION = -0.72;
+const MAX_VERTICAL_ROTATION = 0.72;
 const MAX_HORIZONTAL_VELOCITY = 2.2;
+const MAX_VERTICAL_VELOCITY = 1.65;
 const VELOCITY_SMOOTHING = 0.28;
 const MOMENTUM_FRICTION = 0.88;
 const MOMENTUM_EPSILON = 0.0025;
-const TILT_SETTLE_EPSILON = 0.0015;
-const TILT_RETURN_SMOOTHING = 8.4;
 const AUTO_ROTATION_RESUME_DELAY = 0.65;
 const IDLE_BLEND_START_VELOCITY = 0.16;
 const MAX_POINTER_DELTA = 80;
@@ -133,6 +132,7 @@ type PointerPosition = {
 };
 
 type AngularVelocity = {
+  x: number;
   y: number;
 };
 
@@ -415,7 +415,9 @@ function createLandDotGeometry(landPoints: LandPoint[]) {
 }
 
 function getMomentumEnergy(velocity: AngularVelocity) {
-  const velocityStrength = Math.abs(velocity.y / MAX_HORIZONTAL_VELOCITY);
+  const normalizedX = Math.abs(velocity.x / MAX_VERTICAL_VELOCITY);
+  const normalizedY = Math.abs(velocity.y / MAX_HORIZONTAL_VELOCITY);
+  const velocityStrength = Math.hypot(normalizedX, normalizedY);
   return clamp(velocityStrength * 1.35, 0, 0.72);
 }
 
@@ -1099,7 +1101,7 @@ function GlobeGroup({
   const activePointerIdRef = useRef<number | null>(null);
   const activePointerTargetRef = useRef<Element | null>(null);
   const previousPointerRef = useRef<PointerPosition | null>(null);
-  const angularVelocityRef = useRef<AngularVelocity>({ y: 0 });
+  const angularVelocityRef = useRef<AngularVelocity>({ x: 0, y: 0 });
   const interactionStateRef = useRef<InteractionState>("idle");
   const interactionEnergyRef = useRef(0);
   const autoRotationResumeDelayRef = useRef(0);
@@ -1121,10 +1123,11 @@ function GlobeGroup({
     if (GLOBE_DEBUG_MODE) return;
 
     yawGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
+    tiltGroupRef.current.rotation.x = 0;
     tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
 
     const velocity = angularVelocityRef.current;
-    const hasMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON;
+    const hasMomentum = Math.hypot(velocity.x, velocity.y) > MOMENTUM_EPSILON;
 
     if (isDraggingRef.current) {
       const dragEnergy = prefersReducedMotion ? 0.42 : 1;
@@ -1132,13 +1135,7 @@ function GlobeGroup({
       return;
     }
 
-    const currentTilt = tiltGroupRef.current.rotation.x;
-    const settlingTilt = Math.abs(currentTilt) > TILT_SETTLE_EPSILON;
-    const targetEnergy = hasMomentum
-      ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1)
-      : settlingTilt
-        ? clamp(Math.abs(currentTilt) / MAX_INSPECTION_TILT, 0, 1) * 0.18
-        : 0;
+    const targetEnergy = hasMomentum ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1) : 0;
 
     interactionEnergyRef.current = dampValue(
       interactionEnergyRef.current,
@@ -1149,25 +1146,31 @@ function GlobeGroup({
 
     if (hasMomentum) {
       setInteractionState("momentum");
-    } else if (settlingTilt || interactionEnergyRef.current > 0.025) {
+    } else if (interactionEnergyRef.current > 0.025) {
       setInteractionState("settling");
     } else {
       setInteractionState("idle");
     }
 
     if (hasMomentum) {
+      yawGroupRef.current.rotation.x = clamp(
+        yawGroupRef.current.rotation.x + velocity.x * delta,
+        MIN_VERTICAL_ROTATION,
+        MAX_VERTICAL_ROTATION,
+      );
       yawGroupRef.current.rotation.y += velocity.y * delta;
+      velocity.x = dampVelocity(velocity.x, MOMENTUM_FRICTION, delta);
       velocity.y = dampVelocity(velocity.y, MOMENTUM_FRICTION, delta);
     } else {
+      velocity.x = 0;
       velocity.y = 0;
     }
 
-    tiltGroupRef.current.rotation.x = dampValue(currentTilt, 0, TILT_RETURN_SMOOTHING, delta);
     autoRotationResumeDelayRef.current = Math.max(0, autoRotationResumeDelayRef.current - delta);
 
     const idleSpeed = prefersReducedMotion ? REDUCED_MOTION_IDLE_SPEED : IDLE_ROTATION_SPEED;
     if (autoRotationResumeDelayRef.current <= 0) {
-      yawGroupRef.current.rotation.y += delta * idleSpeed * getIdleBlend(velocity.y);
+      yawGroupRef.current.rotation.y += delta * idleSpeed * getIdleBlend(Math.max(Math.abs(velocity.x), Math.abs(velocity.y)));
     }
   });
 
@@ -1205,21 +1208,28 @@ function GlobeGroup({
       const clampedDeltaY = clamp(deltaY, -MAX_POINTER_DELTA, MAX_POINTER_DELTA);
 
       yawGroupRef.current.rotation.y += clampedDeltaX * HORIZONTAL_DRAG_SENSITIVITY;
-      tiltGroupRef.current.rotation.x = clamp(
-        tiltGroupRef.current.rotation.x + clampedDeltaY * VERTICAL_TILT_SENSITIVITY,
-        MIN_INSPECTION_TILT,
-        MAX_INSPECTION_TILT,
+      yawGroupRef.current.rotation.x = clamp(
+        yawGroupRef.current.rotation.x + clampedDeltaY * VERTICAL_DRAG_SENSITIVITY,
+        MIN_VERTICAL_ROTATION,
+        MAX_VERTICAL_ROTATION,
       );
       yawGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
+      tiltGroupRef.current.rotation.x = 0;
       tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
 
       const velocityScale = 1000 / deltaTime;
+      const nextVelocityX = clamp(
+        clampedDeltaY * VERTICAL_DRAG_SENSITIVITY * velocityScale,
+        -MAX_VERTICAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
+        MAX_VERTICAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
+      );
       const nextVelocityY = clamp(
         clampedDeltaX * HORIZONTAL_DRAG_SENSITIVITY * velocityScale,
         -MAX_HORIZONTAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
         MAX_HORIZONTAL_VELOCITY * (prefersReducedMotion ? 0.65 : 1),
       );
 
+      angularVelocityRef.current.x += (nextVelocityX - angularVelocityRef.current.x) * VELOCITY_SMOOTHING;
       angularVelocityRef.current.y += (nextVelocityY - angularVelocityRef.current.y) * VELOCITY_SMOOTHING;
 
       previousPointerRef.current = {
@@ -1250,10 +1260,13 @@ function GlobeGroup({
       activePointerIdRef.current = event.pointerId;
       activePointerTargetRef.current = event.nativeEvent.target as Element;
       activePointerTargetRef.current.setPointerCapture?.(event.pointerId);
-      angularVelocityRef.current = { y: 0 };
+      angularVelocityRef.current = { x: 0, y: 0 };
       autoRotationResumeDelayRef.current = AUTO_ROTATION_RESUME_DELAY;
       if (yawGroupRef.current) yawGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
-      if (tiltGroupRef.current) tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
+      if (tiltGroupRef.current) {
+        tiltGroupRef.current.rotation.x = 0;
+        tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
+      }
       setInteractionState("dragging");
       previousPointerRef.current = {
         x: event.clientX,
