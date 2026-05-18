@@ -93,8 +93,21 @@ const COMPACT_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "japan",
   "spain",
 ];
-const ROUTE_LABEL_TEXTURE_WIDTH = 512;
-const ROUTE_LABEL_TEXTURE_HEIGHT = 148;
+const ROUTE_LABEL_TEXTURE_WIDTH = 256;
+const ROUTE_LABEL_TEXTURE_HEIGHT = 170;
+
+const FLAG_BORDER_COLORS: Record<NetworkCountryId, string[]> = {
+  australia: ["#012169", "#ffffff", "#e4002b"],
+  nigeria: ["#008751", "#ffffff", "#008751"],
+  palestine: ["#000000", "#ffffff", "#007a3d", "#ce1126"],
+  china: ["#de2910", "#ffde00", "#de2910"],
+  germany: ["#1a1a1a", "#dd0000", "#ffce00"],
+  "saudi-arabia": ["#006c35", "#ffffff", "#006c35"],
+  brazil: ["#009c3b", "#ffdf00", "#002776"],
+  usa: ["#b22234", "#ffffff", "#3c3b6e"],
+  japan: ["#ffffff", "#bc002d", "#ffffff"],
+  spain: ["#aa151b", "#f1bf00", "#aa151b"],
+};
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -198,6 +211,15 @@ function drawRoundedRect(context: CanvasRenderingContext2D, width: number, heigh
   context.closePath();
 }
 
+function colorWithAlpha(hexColor: string, alpha: number) {
+  const normalized = hexColor.replace("#", "");
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 function loadFlagImage(flagCode: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -218,24 +240,28 @@ async function createFlagBadgeTexture(country: NetworkCountry) {
   if (!context) return null;
 
   const flagImage = await loadFlagImage(country.flagCode);
+  const borderColors = FLAG_BORDER_COLORS[country.id];
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  const badgeWidth = 164;
-  const badgeHeight = 82;
-  const badgeRadius = 18;
+  const badgeWidth = 190;
+  const badgeHeight = 126;
+  const badgeRadius = 25;
   const left = centerX - badgeWidth / 2;
   const top = centerY - badgeHeight / 2;
-  const flagInset = 13;
-  const flagLeft = left + flagInset;
-  const flagTop = top + flagInset;
-  const flagWidth = badgeWidth - flagInset * 2;
-  const flagHeight = badgeHeight - flagInset * 2;
-  const flagRadius = 11;
+  const flagWidth = 144;
+  const flagHeight = 96;
+  const flagLeft = centerX - flagWidth / 2;
+  const flagTop = centerY - flagHeight / 2;
+  const flagRadius = 15;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.shadowColor = "rgba(45, 194, 255, 0.32)";
-  context.shadowBlur = 24;
-  context.fillStyle = "rgba(3, 10, 22, 0.72)";
+  context.shadowColor = colorWithAlpha(borderColors[0], 0.42);
+  context.shadowBlur = 18;
+  const badgeFill = context.createLinearGradient(left, top, left, top + badgeHeight);
+  badgeFill.addColorStop(0, "rgba(8, 18, 34, 0.9)");
+  badgeFill.addColorStop(0.55, "rgba(3, 10, 22, 0.76)");
+  badgeFill.addColorStop(1, "rgba(1, 5, 14, 0.9)");
+  context.fillStyle = badgeFill;
   context.translate(left, top);
   drawRoundedRect(context, badgeWidth, badgeHeight, badgeRadius);
   context.fill();
@@ -243,16 +269,32 @@ async function createFlagBadgeTexture(country: NetworkCountry) {
 
   context.shadowBlur = 0;
   const borderGradient = context.createLinearGradient(left, top, left + badgeWidth, top + badgeHeight);
-  borderGradient.addColorStop(0, "rgba(255, 255, 255, 0.68)");
-  borderGradient.addColorStop(0.42, "rgba(69, 223, 255, 0.5)");
-  borderGradient.addColorStop(1, "rgba(255, 77, 166, 0.48)");
+  borderColors.forEach((color, index) => {
+    borderGradient.addColorStop(index / Math.max(1, borderColors.length - 1), colorWithAlpha(color, 0.86));
+  });
   context.strokeStyle = borderGradient;
-  context.lineWidth = 3;
+  context.lineWidth = 5.5;
   context.translate(left, top);
   drawRoundedRect(context, badgeWidth, badgeHeight, badgeRadius);
   context.stroke();
   context.setTransform(1, 0, 0, 1, 0, 0);
 
+  context.strokeStyle = "rgba(235, 249, 255, 0.38)";
+  context.lineWidth = 1.25;
+  context.translate(left + 5, top + 5);
+  drawRoundedRect(context, badgeWidth - 10, badgeHeight - 10, badgeRadius - 6);
+  context.stroke();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+
+  context.shadowColor = "rgba(0, 0, 0, 0.46)";
+  context.shadowBlur = 10;
+  context.fillStyle = "rgba(255, 255, 255, 0.08)";
+  context.translate(flagLeft - 4, flagTop - 4);
+  drawRoundedRect(context, flagWidth + 8, flagHeight + 8, flagRadius + 4);
+  context.fill();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+
+  context.shadowBlur = 0;
   context.save();
   context.translate(flagLeft, flagTop);
   drawRoundedRect(context, flagWidth, flagHeight, flagRadius);
@@ -260,8 +302,12 @@ async function createFlagBadgeTexture(country: NetworkCountry) {
   context.drawImage(flagImage, 0, 0, flagWidth, flagHeight);
   context.restore();
 
-  context.strokeStyle = "rgba(224, 246, 255, 0.34)";
-  context.lineWidth = 1.6;
+  const flagStroke = context.createLinearGradient(flagLeft, flagTop, flagLeft + flagWidth, flagTop + flagHeight);
+  flagStroke.addColorStop(0, "rgba(255, 255, 255, 0.72)");
+  flagStroke.addColorStop(0.5, colorWithAlpha(borderColors[Math.floor(borderColors.length / 2)], 0.45));
+  flagStroke.addColorStop(1, "rgba(255, 255, 255, 0.38)");
+  context.strokeStyle = flagStroke;
+  context.lineWidth = 2;
   context.translate(flagLeft, flagTop);
   drawRoundedRect(context, flagWidth, flagHeight, flagRadius);
   context.stroke();
@@ -726,9 +772,9 @@ function NetworkCountryMarker({
   const [badgeTexture, setBadgeTexture] = useState<CanvasTexture | null>(null);
   const lastBadgeVisibleRef = useRef(false);
   const badgeScale = useMemo<[number, number, number]>(() => {
-    const width = isCompactViewport ? 0.44 : 0.56;
+    const width = isCompactViewport ? 0.4 : 0.5;
 
-    return [width, width * 0.5, 1];
+    return [width, width * 0.66, 1];
   }, [isCompactViewport]);
 
   useEffect(() => {
