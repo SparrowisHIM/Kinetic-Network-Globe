@@ -93,12 +93,11 @@ const COMPACT_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "japan",
   "spain",
 ];
-const ROUTE_LABEL_TEXTURE_WIDTH = 256;
-const ROUTE_LABEL_TEXTURE_HEIGHT = 170;
+const FLAG_PIN_TEXTURE_SIZE = 256;
 
 const FLAG_BORDER_COLORS: Record<NetworkCountryId, string[]> = {
   australia: ["#012169", "#ffffff", "#e4002b"],
-  nigeria: ["#008751", "#ffffff", "#008751"],
+  nigeria: ["#008751", "#ffffff", "#008751", "#ffffff", "#008751"],
   palestine: ["#000000", "#ffffff", "#007a3d", "#ce1126"],
   china: ["#de2910", "#ffde00", "#de2910"],
   germany: ["#1a1a1a", "#dd0000", "#ffce00"],
@@ -140,6 +139,14 @@ type AngularVelocity = {
 type RouteCurveModel = {
   route: NetworkRoute;
   curve: QuadraticBezierCurve3;
+};
+
+type FlagPinTextureModel = {
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D;
+  flagImage: HTMLImageElement;
+  texture: CanvasTexture;
+  borderColors: string[];
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -220,6 +227,24 @@ function colorWithAlpha(hexColor: string, alpha: number) {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+function drawImageCover(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const imageRatio = image.naturalWidth && image.naturalHeight ? image.naturalWidth / image.naturalHeight : 1.5;
+  const targetRatio = width / height;
+  const drawWidth = imageRatio > targetRatio ? height * imageRatio : width;
+  const drawHeight = imageRatio > targetRatio ? height : width / imageRatio;
+  const drawX = x + (width - drawWidth) / 2;
+  const drawY = y + (height - drawHeight) / 2;
+
+  context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+}
+
 function loadFlagImage(flagCode: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -230,95 +255,111 @@ function loadFlagImage(flagCode: string) {
   });
 }
 
-async function createFlagBadgeTexture(country: NetworkCountry) {
+function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
+  const { canvas, context, flagImage, texture, borderColors } = pinTexture;
+  const size = canvas.width;
+  const center = size / 2;
+  const glowRadius = 112;
+  const ringRadius = 84;
+  const flagRadius = 58;
+  const flagDiameter = flagRadius * 2;
+  const ringColors = [...borderColors, borderColors[0]];
+
+  context.clearRect(0, 0, size, size);
+  context.setTransform(1, 0, 0, 1, 0, 0);
+
+  const glow = context.createRadialGradient(center, center + 10, flagRadius * 0.42, center, center + 10, glowRadius);
+  glow.addColorStop(0, colorWithAlpha(borderColors[0], 0.38));
+  glow.addColorStop(0.45, colorWithAlpha(borderColors[Math.floor(borderColors.length / 2)], 0.13));
+  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+  context.fillStyle = glow;
+  context.beginPath();
+  context.arc(center, center + 10, glowRadius, 0, Math.PI * 2);
+  context.fill();
+
+  context.save();
+  context.shadowColor = colorWithAlpha(borderColors[0], 0.56);
+  context.shadowBlur = 15;
+  context.lineWidth = 15;
+  const ringGradient = context.createConicGradient(rotation, center, center);
+  ringColors.forEach((color, index) => {
+    ringGradient.addColorStop(index / Math.max(1, ringColors.length - 1), colorWithAlpha(color, 0.98));
+  });
+  context.strokeStyle = ringGradient;
+  context.beginPath();
+  context.arc(center, center, ringRadius, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+
+  context.lineWidth = 4;
+  context.strokeStyle = "rgba(3, 9, 21, 0.9)";
+  context.beginPath();
+  context.arc(center, center, ringRadius - 10, 0, Math.PI * 2);
+  context.stroke();
+
+  const coinFill = context.createRadialGradient(center - 26, center - 30, 8, center, center, flagRadius + 18);
+  coinFill.addColorStop(0, "rgba(255, 255, 255, 0.18)");
+  coinFill.addColorStop(0.48, "rgba(6, 14, 29, 0.72)");
+  coinFill.addColorStop(1, "rgba(1, 5, 13, 0.92)");
+  context.fillStyle = coinFill;
+  context.beginPath();
+  context.arc(center, center, flagRadius + 11, 0, Math.PI * 2);
+  context.fill();
+
+  context.save();
+  context.beginPath();
+  context.arc(center, center, flagRadius, 0, Math.PI * 2);
+  context.clip();
+  drawImageCover(context, flagImage, center - flagRadius, center - flagRadius, flagDiameter, flagDiameter);
+  context.restore();
+
+  const innerRim = context.createLinearGradient(center - flagRadius, center - flagRadius, center + flagRadius, center + flagRadius);
+  innerRim.addColorStop(0, "rgba(255, 255, 255, 0.78)");
+  innerRim.addColorStop(0.55, colorWithAlpha(borderColors[Math.floor(borderColors.length / 2)], 0.35));
+  innerRim.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+  context.lineWidth = 4.5;
+  context.strokeStyle = innerRim;
+  context.beginPath();
+  context.arc(center, center, flagRadius, 0, Math.PI * 2);
+  context.stroke();
+
+  context.fillStyle = "rgba(255, 255, 255, 0.17)";
+  context.beginPath();
+  context.ellipse(center - 18, center - 24, 32, 13, -0.35, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = colorWithAlpha(borderColors[0], 0.46);
+  context.beginPath();
+  context.arc(center, center + ringRadius + 18, 11, 0, Math.PI * 2);
+  context.fill();
+
+  texture.needsUpdate = true;
+}
+
+async function createFlagPinTexture(country: NetworkCountry) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
-  canvas.width = ROUTE_LABEL_TEXTURE_WIDTH;
-  canvas.height = ROUTE_LABEL_TEXTURE_HEIGHT;
+  canvas.width = FLAG_PIN_TEXTURE_SIZE;
+  canvas.height = FLAG_PIN_TEXTURE_SIZE;
 
   if (!context) return null;
 
   const flagImage = await loadFlagImage(country.flagCode);
-  const borderColors = FLAG_BORDER_COLORS[country.id];
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const badgeWidth = 190;
-  const badgeHeight = 126;
-  const badgeRadius = 25;
-  const left = centerX - badgeWidth / 2;
-  const top = centerY - badgeHeight / 2;
-  const flagWidth = 144;
-  const flagHeight = 96;
-  const flagLeft = centerX - flagWidth / 2;
-  const flagTop = centerY - flagHeight / 2;
-  const flagRadius = 15;
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.shadowColor = colorWithAlpha(borderColors[0], 0.42);
-  context.shadowBlur = 18;
-  const badgeFill = context.createLinearGradient(left, top, left, top + badgeHeight);
-  badgeFill.addColorStop(0, "rgba(8, 18, 34, 0.9)");
-  badgeFill.addColorStop(0.55, "rgba(3, 10, 22, 0.76)");
-  badgeFill.addColorStop(1, "rgba(1, 5, 14, 0.9)");
-  context.fillStyle = badgeFill;
-  context.translate(left, top);
-  drawRoundedRect(context, badgeWidth, badgeHeight, badgeRadius);
-  context.fill();
-  context.setTransform(1, 0, 0, 1, 0, 0);
-
-  context.shadowBlur = 0;
-  const borderGradient = context.createLinearGradient(left, top, left + badgeWidth, top + badgeHeight);
-  borderColors.forEach((color, index) => {
-    borderGradient.addColorStop(index / Math.max(1, borderColors.length - 1), colorWithAlpha(color, 0.86));
-  });
-  context.strokeStyle = borderGradient;
-  context.lineWidth = 5.5;
-  context.translate(left, top);
-  drawRoundedRect(context, badgeWidth, badgeHeight, badgeRadius);
-  context.stroke();
-  context.setTransform(1, 0, 0, 1, 0, 0);
-
-  context.strokeStyle = "rgba(235, 249, 255, 0.38)";
-  context.lineWidth = 1.25;
-  context.translate(left + 5, top + 5);
-  drawRoundedRect(context, badgeWidth - 10, badgeHeight - 10, badgeRadius - 6);
-  context.stroke();
-  context.setTransform(1, 0, 0, 1, 0, 0);
-
-  context.shadowColor = "rgba(0, 0, 0, 0.46)";
-  context.shadowBlur = 10;
-  context.fillStyle = "rgba(255, 255, 255, 0.08)";
-  context.translate(flagLeft - 4, flagTop - 4);
-  drawRoundedRect(context, flagWidth + 8, flagHeight + 8, flagRadius + 4);
-  context.fill();
-  context.setTransform(1, 0, 0, 1, 0, 0);
-
-  context.shadowBlur = 0;
-  context.save();
-  context.translate(flagLeft, flagTop);
-  drawRoundedRect(context, flagWidth, flagHeight, flagRadius);
-  context.clip();
-  context.drawImage(flagImage, 0, 0, flagWidth, flagHeight);
-  context.restore();
-
-  const flagStroke = context.createLinearGradient(flagLeft, flagTop, flagLeft + flagWidth, flagTop + flagHeight);
-  flagStroke.addColorStop(0, "rgba(255, 255, 255, 0.72)");
-  flagStroke.addColorStop(0.5, colorWithAlpha(borderColors[Math.floor(borderColors.length / 2)], 0.45));
-  flagStroke.addColorStop(1, "rgba(255, 255, 255, 0.38)");
-  context.strokeStyle = flagStroke;
-  context.lineWidth = 2;
-  context.translate(flagLeft, flagTop);
-  drawRoundedRect(context, flagWidth, flagHeight, flagRadius);
-  context.stroke();
-  context.setTransform(1, 0, 0, 1, 0, 0);
-
   const texture = new CanvasTexture(canvas);
+  const pinTexture = {
+    canvas,
+    context,
+    flagImage,
+    texture,
+    borderColors: FLAG_BORDER_COLORS[country.id],
+  };
+
   texture.minFilter = LinearFilter;
   texture.magFilter = LinearFilter;
-  texture.needsUpdate = true;
+  drawFlagPinTexture(pinTexture, 0);
 
-  return texture;
+  return pinTexture;
 }
 
 function getLandPointSeed(point: LandPoint) {
@@ -769,12 +810,12 @@ function NetworkCountryMarker({
   const camera = useThree((state) => state.camera);
   const viewportSize = useThree((state) => state.size);
   const [badgeVisible, setBadgeVisible] = useState(false);
-  const [badgeTexture, setBadgeTexture] = useState<CanvasTexture | null>(null);
+  const [badgeTexture, setBadgeTexture] = useState<FlagPinTextureModel | null>(null);
   const lastBadgeVisibleRef = useRef(false);
   const badgeScale = useMemo<[number, number, number]>(() => {
-    const width = isCompactViewport ? 0.4 : 0.5;
+    const width = isCompactViewport ? 0.27 : 0.32;
 
-    return [width, width * 0.66, 1];
+    return [width, width, 1];
   }, [isCompactViewport]);
 
   useEffect(() => {
@@ -784,15 +825,15 @@ function NetworkCountryMarker({
 
     if (!showBadge || typeof document === "undefined") return;
 
-    void createFlagBadgeTexture(country).then((texture) => {
-      if (!texture) return;
+    void createFlagPinTexture(country).then((pinTexture) => {
+      if (!pinTexture) return;
 
       if (disposed) {
-        texture.dispose();
+        pinTexture.texture.dispose();
         return;
       }
 
-      setBadgeTexture(texture);
+      setBadgeTexture(pinTexture);
     });
 
     return () => {
@@ -800,9 +841,9 @@ function NetworkCountryMarker({
     };
   }, [country, showBadge]);
 
-  useEffect(() => () => badgeTexture?.dispose(), [badgeTexture]);
+  useEffect(() => () => badgeTexture?.texture.dispose(), [badgeTexture]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!markerRef.current) return;
 
     const facingAmount = getWorldFacingAmount(markerRef.current, camera.position);
@@ -821,6 +862,10 @@ function NetworkCountryMarker({
     const nextBadgeVisible = showBadge && Boolean(badgeTexture) && facingAmount > 0.22 && hasBadgeRoom;
 
     markerRef.current.visible = nextBadgeVisible;
+
+    if (nextBadgeVisible && badgeTexture) {
+      drawFlagPinTexture(badgeTexture, clock.elapsedTime * 0.72);
+    }
 
     if (lastBadgeVisibleRef.current !== nextBadgeVisible) {
       lastBadgeVisibleRef.current = nextBadgeVisible;
@@ -866,7 +911,7 @@ function NetworkCountryMarker({
           renderOrder={7}
         >
           <spriteMaterial
-            map={badgeTexture}
+            map={badgeTexture.texture}
             transparent
             opacity={badgeVisible ? 0.98 : 0}
             depthTest={false}
