@@ -65,9 +65,9 @@ const SURFACE_GRID_LON_STEP = 20;
 const SURFACE_GRID_SEGMENT_STEP = 2;
 const ROUTE_SURFACE_RADIUS = GLOBE_RADIUS + 0.05;
 const ROUTE_CURVE_SEGMENTS = 112;
-const ROUTE_LINE_RADIUS = 0.0039;
+const ROUTE_LINE_RADIUS = 0.0042;
 const ROUTE_PULSE_SPEED = 0.115;
-const ROUTE_PULSE_RADIUS = 0.021;
+const ROUTE_PULSE_RADIUS = 0.023;
 const ROUTE_NODE_RADIUS = 0.019;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
@@ -747,7 +747,7 @@ function NetworkRouteArc({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.24}
+          opacity={0.31}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -759,7 +759,7 @@ function NetworkRouteArc({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.045}
+          opacity={0.07}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -772,7 +772,7 @@ function NetworkRouteArc({
           <meshBasicMaterial
             color={accentColor}
             transparent
-            opacity={0.68}
+            opacity={0.78}
             depthTest
             depthWrite={false}
             blending={AdditiveBlending}
@@ -784,7 +784,7 @@ function NetworkRouteArc({
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.1}
+            opacity={0.14}
             depthTest
             depthWrite={false}
             blending={AdditiveBlending}
