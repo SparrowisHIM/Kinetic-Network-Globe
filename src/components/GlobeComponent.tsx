@@ -280,7 +280,7 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
   context.save();
   context.shadowColor = colorWithAlpha(borderColors[0], 0.56);
   context.shadowBlur = 15;
-  context.lineWidth = 15;
+  context.lineWidth = 10.5;
   const ringGradient = context.createConicGradient(rotation, center, center);
   ringColors.forEach((color, index) => {
     ringGradient.addColorStop(index / Math.max(1, ringColors.length - 1), colorWithAlpha(color, 0.98));
@@ -291,7 +291,7 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
   context.stroke();
   context.restore();
 
-  context.lineWidth = 4;
+  context.lineWidth = 3;
   context.strokeStyle = "rgba(3, 9, 21, 0.9)";
   context.beginPath();
   context.arc(center, center, ringRadius - 10, 0, Math.PI * 2);
@@ -317,7 +317,7 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
   innerRim.addColorStop(0, "rgba(255, 255, 255, 0.78)");
   innerRim.addColorStop(0.55, colorWithAlpha(borderColors[Math.floor(borderColors.length / 2)], 0.35));
   innerRim.addColorStop(1, "rgba(0, 0, 0, 0.55)");
-  context.lineWidth = 4.5;
+  context.lineWidth = 3.25;
   context.strokeStyle = innerRim;
   context.beginPath();
   context.arc(center, center, flagRadius, 0, Math.PI * 2);
