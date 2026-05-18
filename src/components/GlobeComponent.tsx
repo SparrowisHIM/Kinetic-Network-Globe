@@ -41,7 +41,7 @@ const DEFAULT_ROTATION_Z = 0;
 const HORIZONTAL_DRAG_SENSITIVITY = 0.0032;
 const VERTICAL_TILT_SENSITIVITY = 0.00165;
 // Vertical drag stays temporary, but now gives enough inspection range to reveal
-// northern hubs such as Russia without changing the default upright Earth view.
+// northern hubs without changing the default upright Earth view.
 const MIN_INSPECTION_TILT = -0.42;
 const MAX_INSPECTION_TILT = 0.42;
 const MAX_HORIZONTAL_VELOCITY = 2.2;
@@ -74,7 +74,7 @@ const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "nigeria",
   "palestine",
   "china",
-  "russia",
+  "germany",
   "saudi-arabia",
   "brazil",
   "usa",
@@ -86,7 +86,7 @@ const COMPACT_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "nigeria",
   "palestine",
   "china",
-  "russia",
+  "germany",
   "saudi-arabia",
   "brazil",
   "usa",
