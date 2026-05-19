@@ -633,6 +633,10 @@ function DigitalGlobeSurface({
   continentIntensity: number;
 }) {
   const palette = GLOBE_THEME_PALETTES[theme];
+  const shaderIntensity =
+    continentIntensity * (theme === "dark" ? DARK_CONTINENT_INTENSITY_GAIN : LIGHT_CONTINENT_INTENSITY_GAIN);
+  const pointSizeGain = theme === "dark" ? 0.2 : 0.08;
+  const pointSize = LAND_DOT_POINT_SIZE * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
   const landGeometry = useMemo(() => {
     const landPoints = generateLandPoints({
       longitudeStep: DOT_SPACING,
@@ -646,16 +650,12 @@ function DigitalGlobeSurface({
   }, []);
   const landUniforms = useMemo(
     () => ({
-      uPointSize: { value: LAND_DOT_POINT_SIZE },
+      uPointSize: { value: pointSize },
       uInnerColor: { value: palette.landInner },
       uOuterColor: { value: palette.landOuter },
-      uIntensity: {
-        value:
-          continentIntensity *
-          (theme === "dark" ? DARK_CONTINENT_INTENSITY_GAIN : LIGHT_CONTINENT_INTENSITY_GAIN),
-      },
+      uIntensity: { value: shaderIntensity },
     }),
-    [continentIntensity, palette, theme],
+    [palette, pointSize, shaderIntensity],
   );
 
   useEffect(() => () => landGeometry.dispose(), [landGeometry]);
