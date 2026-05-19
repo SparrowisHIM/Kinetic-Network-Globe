@@ -59,15 +59,18 @@ const LAND_DOT_POINT_SIZE = DOT_SIZE;
 const INTERACTION_ENERGY_EASING = 5.8;
 const REDUCED_MOTION_IDLE_SPEED = 0.008;
 const COMPACT_MEDIA_QUERY = "(max-width: 640px), (max-height: 620px)";
+const GLOBE_SPHERE_SEGMENTS = 64;
+const GLOBE_DETAIL_SEGMENTS = 48;
 const SURFACE_GRID_LAT_STEP = 20;
 const SURFACE_GRID_LON_STEP = 20;
 const SURFACE_GRID_SEGMENT_STEP = 2;
 const ROUTE_SURFACE_RADIUS = GLOBE_RADIUS + 0.05;
-const ROUTE_CURVE_SEGMENTS = 112;
+const ROUTE_CURVE_SEGMENTS = 80;
 const ROUTE_LINE_RADIUS = 0.0042;
 const ROUTE_PULSE_SPEED = 0.115;
 const ROUTE_PULSE_RADIUS = 0.023;
 const ROUTE_NODE_RADIUS = 0.019;
+const ROUTE_PULSE_SEGMENTS = 12;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
   "nigeria",
@@ -106,6 +109,8 @@ const FLAG_BORDER_COLORS: Record<NetworkCountryId, string[]> = {
   japan: ["#ffffff", "#bc002d", "#ffffff"],
   spain: ["#aa151b", "#f1bf00", "#aa151b"],
 };
+
+const FLAG_PIN_TEXTURE_FPS = 24;
 
 type GlobeGroupProps = {
   onDraggingChange: (isDragging: boolean) => void;
@@ -192,16 +197,6 @@ function createRouteCurve(from: LandPoint, to: LandPoint) {
 
 function getCountryMap() {
   return new Map(NETWORK_COUNTRIES.map((country) => [country.id, country]));
-}
-
-function getWorldFacingAmount(object: Group, cameraPosition: Vector3) {
-  const worldPosition = new Vector3();
-  object.getWorldPosition(worldPosition);
-
-  const surfaceNormal = worldPosition.clone().normalize();
-  const cameraDirection = cameraPosition.clone().normalize();
-
-  return surfaceNormal.dot(cameraDirection);
 }
 
 function drawRoundedRect(context: CanvasRenderingContext2D, width: number, height: number, radius: number) {
@@ -451,7 +446,7 @@ function RimAtmosphere() {
   return (
     <group>
       <mesh>
-        <sphereGeometry args={[GLOBE_RADIUS * 1.055, 128, 128]} />
+        <sphereGeometry args={[GLOBE_RADIUS * 1.055, GLOBE_SPHERE_SEGMENTS, GLOBE_SPHERE_SEGMENTS]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -482,7 +477,7 @@ function RimAtmosphere() {
       </mesh>
 
       <mesh scale={1.08}>
-        <sphereGeometry args={[GLOBE_RADIUS * 1.06, 128, 128]} />
+        <sphereGeometry args={[GLOBE_RADIUS * 1.06, GLOBE_SPHERE_SEGMENTS, GLOBE_SPHERE_SEGMENTS]} />
         <meshBasicMaterial
           color="#2f9fff"
           transparent
@@ -506,7 +501,7 @@ function GlassyOceanIllumination() {
 
   return (
     <mesh>
-      <sphereGeometry args={[GLOBE_RADIUS * 1.002, 96, 96]} />
+      <sphereGeometry args={[GLOBE_RADIUS * 1.002, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -623,7 +618,7 @@ function DigitalGlobeSurface() {
   return (
     <group>
       <mesh>
-        <sphereGeometry args={[GLOBE_RADIUS * 0.985, 96, 96]} />
+        <sphereGeometry args={[GLOBE_RADIUS * 0.985, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
         <meshBasicMaterial color="#020915" depthWrite />
       </mesh>
 
@@ -644,7 +639,7 @@ function DigitalGlobeSurface() {
       </points>
 
       <mesh>
-        <sphereGeometry args={[GLOBE_RADIUS * 1.01, 96, 96]} />
+        <sphereGeometry args={[GLOBE_RADIUS * 1.01, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
         <meshBasicMaterial color="#1f8fff" transparent opacity={0.032} depthWrite={false} />
       </mesh>
 
@@ -723,6 +718,7 @@ function NetworkRouteArc({
   const camera = useThree((state) => state.camera);
   const color = useMemo(() => new Color(route.color), [route.color]);
   const accentColor = useMemo(() => new Color(route.accentColor), [route.accentColor]);
+  const cameraDirectionRef = useRef(new Vector3());
 
   useFrame(({ clock }) => {
     if (!pulseRef.current) return;
@@ -735,7 +731,7 @@ function NetworkRouteArc({
     const progress = (clock.elapsedTime * ROUTE_PULSE_SPEED + route.delay) % 1;
     const easedProgress = 0.5 - Math.cos(progress * Math.PI) * 0.5;
     const pulsePosition = curve.getPointAt(easedProgress);
-    const pulseFacing = pulsePosition.clone().normalize().dot(camera.position.clone().normalize());
+    const pulseFacing = pulsePosition.dot(cameraDirectionRef.current.copy(camera.position).normalize()) / pulsePosition.length();
     const pulseRimDistance = Math.hypot(pulsePosition.x, pulsePosition.y) / ROUTE_SURFACE_RADIUS;
 
     pulseRef.current.visible = pulseFacing > 0.55 && pulseRimDistance < 0.72;
@@ -770,7 +766,7 @@ function NetworkRouteArc({
 
       <group ref={pulseRef} renderOrder={6}>
         <mesh>
-          <sphereGeometry args={[ROUTE_PULSE_RADIUS, 16, 16]} />
+          <sphereGeometry args={[ROUTE_PULSE_RADIUS, ROUTE_PULSE_SEGMENTS, ROUTE_PULSE_SEGMENTS]} />
           <meshBasicMaterial
             color={accentColor}
             transparent
@@ -782,7 +778,7 @@ function NetworkRouteArc({
         </mesh>
 
         <mesh>
-          <sphereGeometry args={[ROUTE_PULSE_RADIUS * 2.4, 18, 18]} />
+          <sphereGeometry args={[ROUTE_PULSE_RADIUS * 2.4, ROUTE_PULSE_SEGMENTS, ROUTE_PULSE_SEGMENTS]} />
           <meshBasicMaterial
             color={color}
             transparent
@@ -814,6 +810,9 @@ function NetworkCountryMarker({
   const [badgeVisible, setBadgeVisible] = useState(false);
   const [badgeTexture, setBadgeTexture] = useState<FlagPinTextureModel | null>(null);
   const lastBadgeVisibleRef = useRef(false);
+  const lastTextureDrawAtRef = useRef(0);
+  const worldPositionRef = useRef(new Vector3());
+  const cameraDirectionRef = useRef(new Vector3());
   const badgeScale = useMemo<[number, number, number]>(() => {
     const width = isCompactViewport ? 0.27 : 0.32;
 
@@ -848,9 +847,9 @@ function NetworkCountryMarker({
   useFrame(({ clock }) => {
     if (!markerRef.current) return;
 
-    const facingAmount = getWorldFacingAmount(markerRef.current, camera.position);
-    const worldPosition = new Vector3();
+    const worldPosition = worldPositionRef.current;
     markerRef.current.getWorldPosition(worldPosition);
+    const facingAmount = worldPosition.dot(cameraDirectionRef.current.copy(camera.position).normalize()) / worldPosition.length();
     const projectedPosition = worldPosition.project(camera);
     const screenX = (projectedPosition.x * 0.5 + 0.5) * viewportSize.width;
     const screenY = (-projectedPosition.y * 0.5 + 0.5) * viewportSize.height;
@@ -865,7 +864,8 @@ function NetworkCountryMarker({
 
     markerRef.current.visible = nextBadgeVisible;
 
-    if (nextBadgeVisible && badgeTexture) {
+    if (nextBadgeVisible && badgeTexture && clock.elapsedTime - lastTextureDrawAtRef.current > 1 / FLAG_PIN_TEXTURE_FPS) {
+      lastTextureDrawAtRef.current = clock.elapsedTime;
       drawFlagPinTexture(badgeTexture, clock.elapsedTime * 0.72);
     }
 
@@ -883,7 +883,7 @@ function NetworkCountryMarker({
       renderOrder={5}
     >
       <mesh>
-        <sphereGeometry args={[ROUTE_NODE_RADIUS, 16, 16]} />
+        <sphereGeometry args={[ROUTE_NODE_RADIUS, 12, 12]} />
         <meshBasicMaterial
           color="#c8f6ff"
           transparent
@@ -895,7 +895,7 @@ function NetworkCountryMarker({
       </mesh>
 
       <mesh>
-        <sphereGeometry args={[ROUTE_NODE_RADIUS * 2.15, 16, 16]} />
+        <sphereGeometry args={[ROUTE_NODE_RADIUS * 2.15, 12, 12]} />
         <meshBasicMaterial
           color="#45dfff"
           transparent
@@ -1327,7 +1327,7 @@ export function GlobeComponent() {
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const isCompactViewport = useMediaQuery(COMPACT_MEDIA_QUERY);
   const canvasDpr = useMemo<[number, number]>(
-    () => (prefersReducedMotion || isCompactViewport ? [1, 1.3] : [1, 1.75]),
+    () => (prefersReducedMotion || isCompactViewport ? [1, 1.2] : [1, 1.5]),
     [isCompactViewport, prefersReducedMotion],
   );
 
