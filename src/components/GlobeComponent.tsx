@@ -1342,7 +1342,7 @@ function GlobeControlPanel({
         </div>
 
         <ControlRange
-          label="Rotation Speed"
+          label="Rotation Rate"
           value={controls.rotationSpeed}
           min={0.2}
           max={4}
@@ -1352,7 +1352,7 @@ function GlobeControlPanel({
         />
 
         <ControlRange
-          label="Intensity"
+          label="Surface Intensity"
           value={controls.continentIntensity}
           min={0.65}
           max={3.5}

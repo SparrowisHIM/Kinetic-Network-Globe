@@ -501,9 +501,10 @@ body {
   justify-content: space-between;
   gap: 0.8rem;
   color: var(--panel-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 760;
   line-height: 1;
+  text-transform: uppercase;
 }
 
 .control-range-meta strong {
