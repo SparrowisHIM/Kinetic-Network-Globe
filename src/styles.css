@@ -286,6 +286,22 @@ body {
   opacity: 0.94;
 }
 
+.globe-section.theme-light::after {
+  inset: auto 8% 5%;
+  height: 16rem;
+  background: radial-gradient(ellipse, rgba(1, 23, 45, 0.18), rgba(26, 182, 230, 0.08) 44%, transparent 74%);
+  filter: blur(3.5rem);
+  opacity: 0.78;
+}
+
+.globe-section.theme-light .globe-stage {
+  filter: drop-shadow(0 1.5rem 2.8rem rgba(1, 21, 38, 0.28));
+}
+
+.globe-section.theme-light.is-dragging .globe-stage {
+  filter: drop-shadow(0 1.35rem 2.5rem rgba(1, 21, 38, 0.34));
+}
+
 .globe-section.theme-light .globe-ambient {
   background:
     radial-gradient(circle at center, rgba(3, 20, 37, 0.14), transparent 25rem),

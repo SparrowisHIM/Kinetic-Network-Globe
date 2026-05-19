@@ -201,6 +201,7 @@ const GLOBE_THEME_PALETTES = {
     oceanGlow: [0.22, 0.68, 1],
     rimGlow: [0.48, 0.84, 1],
     rimSoft: [0.18, 0.48, 1],
+    rimIntensity: 1,
     landInner: [0.84, 0.97, 1],
     landOuter: [0.96, 0.99, 1],
   },
@@ -212,6 +213,7 @@ const GLOBE_THEME_PALETTES = {
     oceanGlow: [0.07, 0.62, 0.9],
     rimGlow: [0.26, 0.82, 1],
     rimSoft: [0.05, 0.34, 0.62],
+    rimIntensity: 1.82,
     landInner: [0.5, 0.91, 1],
     landOuter: [0.92, 0.99, 1],
   },
@@ -225,6 +227,7 @@ const GLOBE_THEME_PALETTES = {
     oceanGlow: [number, number, number];
     rimGlow: [number, number, number];
     rimSoft: [number, number, number];
+    rimIntensity: number;
     landInner: [number, number, number];
     landOuter: [number, number, number];
   }
@@ -530,6 +533,7 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
     () => ({
       uGlowColor: { value: palette.rimGlow },
       uSoftGlowColor: { value: palette.rimSoft },
+      uRimIntensity: { value: palette.rimIntensity },
     }),
     [palette],
   );
@@ -557,6 +561,7 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
 
             uniform vec3 uGlowColor;
             uniform vec3 uSoftGlowColor;
+            uniform float uRimIntensity;
             varying float vRim;
 
             void main() {
@@ -565,7 +570,7 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
               float softHalo = pow(rim, 1.35) * 0.045;
               vec3 color = mix(uSoftGlowColor, uGlowColor, smoothstep(0.52, 1.0, rim));
 
-              gl_FragColor = vec4(color, fineEdge + softHalo);
+              gl_FragColor = vec4(color, (fineEdge + softHalo) * uRimIntensity);
             }
           `}
         />
