@@ -662,6 +662,65 @@ body {
     align-content: center;
   }
 
+  .globe-control-panel {
+    top: 0.72rem;
+    left: 0.72rem;
+    width: min(17rem, calc(100vw - 1.44rem));
+    gap: 0.48rem;
+    padding: 0.58rem;
+    border-radius: 8px;
+  }
+
+  .control-panel-header h2 {
+    font-size: 0.82rem;
+  }
+
+  .control-panel-actions {
+    gap: 0.32rem;
+  }
+
+  .control-icon-button {
+    flex-basis: 2rem;
+    width: 2rem;
+    min-height: 2rem;
+  }
+
+  .control-version-button,
+  .control-copy-button {
+    min-height: 2rem;
+    padding: 0 0.62rem;
+    font-size: 0.68rem;
+  }
+
+  .control-section {
+    gap: 0.42rem;
+  }
+
+  .control-section-title,
+  .control-range-meta {
+    font-size: 0.68rem;
+  }
+
+  .control-mode-row {
+    min-height: 2.12rem;
+    padding: 0.2rem;
+  }
+
+  .control-mode-row button {
+    min-height: 1.72rem;
+    font-size: 0.68rem;
+  }
+
+  .control-range-row {
+    gap: 0.28rem;
+    padding: 0.46rem 0.54rem 0.52rem;
+  }
+
+  .control-reset-button {
+    min-height: 2rem;
+    font-size: 0.68rem;
+  }
+
   .globe-overlay {
     inset: 1rem;
     grid-template-columns: 1fr;
