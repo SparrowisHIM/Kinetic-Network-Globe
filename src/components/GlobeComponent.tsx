@@ -1,5 +1,5 @@
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
 import { generateLandPoints, type LandPoint } from "../data/globeLandPoints";
 import {
   NETWORK_COUNTRIES,
@@ -136,17 +136,26 @@ type GlobeGroupProps = {
 };
 
 type InteractionState = "idle" | "dragging" | "momentum" | "settling";
+type GlobeTheme = "dark" | "light";
+
+type GlobeControlsState = {
+  theme: GlobeTheme;
+  rotationSpeed: number;
+  continentIntensity: number;
+};
 
 type GlobeSceneProps = GlobeGroupProps & {
   onInteractionStateChange: (interactionState: InteractionState) => void;
   prefersReducedMotion: boolean;
   isCompactViewport: boolean;
+  controls: GlobeControlsState;
 };
 
 type GlobeInteractionProps = GlobeGroupProps & {
   onInteractionStateChange: (interactionState: InteractionState) => void;
   prefersReducedMotion: boolean;
   isCompactViewport: boolean;
+  controls: GlobeControlsState;
 };
 
 type PointerPosition = {
@@ -172,6 +181,50 @@ type FlagPinTextureModel = {
   texture: CanvasTexture;
   borderColors: string[];
 };
+
+const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
+  theme: "dark",
+  rotationSpeed: 1,
+  continentIntensity: 1,
+};
+
+const GLOBE_THEME_PALETTES = {
+  dark: {
+    oceanCore: "#020915",
+    oceanVeil: "#1f8fff",
+    oceanVeilOpacity: 0.032,
+    oceanBase: [0.04, 0.16, 0.28],
+    oceanGlow: [0.22, 0.68, 1],
+    rimGlow: [0.48, 0.84, 1],
+    rimSoft: [0.18, 0.48, 1],
+    landInner: [0.84, 0.97, 1],
+    landOuter: [0.96, 0.99, 1],
+  },
+  light: {
+    oceanCore: "#d9eff8",
+    oceanVeil: "#54b7ff",
+    oceanVeilOpacity: 0.13,
+    oceanBase: [0.62, 0.82, 0.92],
+    oceanGlow: [0.02, 0.43, 0.72],
+    rimGlow: [0.02, 0.48, 0.82],
+    rimSoft: [0.33, 0.68, 0.92],
+    landInner: [0.02, 0.2, 0.3],
+    landOuter: [0.0, 0.48, 0.65],
+  },
+} satisfies Record<
+  GlobeTheme,
+  {
+    oceanCore: string;
+    oceanVeil: string;
+    oceanVeilOpacity: number;
+    oceanBase: [number, number, number];
+    oceanGlow: [number, number, number];
+    rimGlow: [number, number, number];
+    rimSoft: [number, number, number];
+    landInner: [number, number, number];
+    landOuter: [number, number, number];
+  }
+>;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -467,13 +520,14 @@ function useMediaQuery(query: string) {
   return matches;
 }
 
-function RimAtmosphere() {
+function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
+  const palette = GLOBE_THEME_PALETTES[theme];
   const rimUniforms = useMemo(
     () => ({
-      uGlowColor: { value: [0.48, 0.84, 1] },
-      uSoftGlowColor: { value: [0.18, 0.48, 1] },
+      uGlowColor: { value: palette.rimGlow },
+      uSoftGlowColor: { value: palette.rimSoft },
     }),
-    [],
+    [palette],
   );
 
   return (
@@ -516,13 +570,14 @@ function RimAtmosphere() {
   );
 }
 
-function GlassyOceanIllumination() {
+function GlassyOceanIllumination({ theme }: { theme: GlobeTheme }) {
+  const palette = GLOBE_THEME_PALETTES[theme];
   const uniforms = useMemo(
     () => ({
-      uBaseColor: { value: [0.04, 0.16, 0.28] },
-      uGlowColor: { value: [0.22, 0.68, 1] },
+      uBaseColor: { value: palette.oceanBase },
+      uGlowColor: { value: palette.oceanGlow },
     }),
-    [],
+    [palette],
   );
 
   return (
@@ -566,7 +621,14 @@ function GlassyOceanIllumination() {
   );
 }
 
-function DigitalGlobeSurface() {
+function DigitalGlobeSurface({
+  theme,
+  continentIntensity,
+}: {
+  theme: GlobeTheme;
+  continentIntensity: number;
+}) {
+  const palette = GLOBE_THEME_PALETTES[theme];
   const landGeometry = useMemo(() => {
     const landPoints = generateLandPoints({
       longitudeStep: DOT_SPACING,
@@ -581,10 +643,11 @@ function DigitalGlobeSurface() {
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
-      uInnerColor: { value: [0.84, 0.97, 1] },
-      uOuterColor: { value: [0.96, 0.99, 1] },
+      uInnerColor: { value: palette.landInner },
+      uOuterColor: { value: palette.landOuter },
+      uIntensity: { value: continentIntensity },
     }),
-    [],
+    [continentIntensity, palette],
   );
 
   useEffect(() => () => landGeometry.dispose(), [landGeometry]);
@@ -618,6 +681,7 @@ function DigitalGlobeSurface() {
 
     uniform vec3 uInnerColor;
     uniform vec3 uOuterColor;
+    uniform float uIntensity;
     varying float vFacing;
     varying float vEdgeFade;
     varying float vNorthLight;
@@ -631,13 +695,13 @@ function DigitalGlobeSurface() {
       float frontLight = smoothstep(0.02, 1.0, vFacing);
       float topLandLift = vNorthLight * 0.26;
       float visibleSideLight = mix(0.76, 1.5 + topLandLift, frontLight);
-      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed);
+      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * uIntensity;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift);
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.86, 1.18, uIntensity);
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.008) discard;
-      gl_FragColor = vec4(color, alpha);
+      gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
     }
   `;
 
@@ -645,10 +709,10 @@ function DigitalGlobeSurface() {
     <group>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 0.985, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
-        <meshBasicMaterial color="#020915" depthWrite />
+        <meshBasicMaterial color={palette.oceanCore} depthWrite />
       </mesh>
 
-      <GlassyOceanIllumination />
+      <GlassyOceanIllumination theme={theme} />
 
       <SurfaceGrid />
 
@@ -666,10 +730,10 @@ function DigitalGlobeSurface() {
 
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS * 1.01, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
-        <meshBasicMaterial color="#1f8fff" transparent opacity={0.032} depthWrite={false} />
+        <meshBasicMaterial color={palette.oceanVeil} transparent opacity={palette.oceanVeilOpacity} depthWrite={false} />
       </mesh>
 
-      <RimAtmosphere />
+      <RimAtmosphere theme={theme} />
     </group>
   );
 }
@@ -1165,11 +1229,151 @@ function DebugCameraTarget() {
   return null;
 }
 
+function getRangeFill(value: number, min: number, max: number) {
+  return `${((value - min) / (max - min)) * 100}%`;
+}
+
+function ControlRange({
+  label,
+  value,
+  min,
+  max,
+  step,
+  displayValue,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  displayValue: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="control-range-row">
+      <span className="control-range-meta">
+        <span>{label}</span>
+        <strong>{displayValue}</strong>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.currentTarget.value))}
+        style={{ "--control-fill": getRangeFill(value, min, max) } as CSSProperties}
+      />
+    </label>
+  );
+}
+
+function GlobeControlPanel({
+  controls,
+  onControlsChange,
+}: {
+  controls: GlobeControlsState;
+  onControlsChange: (controls: GlobeControlsState) => void;
+}) {
+  const updateControl = useCallback(
+    <Key extends keyof GlobeControlsState>(key: Key, value: GlobeControlsState[Key]) => {
+      onControlsChange({ ...controls, [key]: value });
+    },
+    [controls, onControlsChange],
+  );
+  const resetControls = useCallback(() => onControlsChange(DEFAULT_GLOBE_CONTROLS), [onControlsChange]);
+  const copyControls = useCallback(() => {
+    const serializedControls = JSON.stringify(controls, null, 2);
+
+    void navigator.clipboard?.writeText(serializedControls);
+  }, [controls]);
+
+  return (
+    <aside className="globe-control-panel" aria-label="Globe display controls">
+      <header className="control-panel-header">
+        <h2>Controls</h2>
+        <button className="control-icon-button" type="button" aria-label="Panel settings">
+          <span />
+        </button>
+      </header>
+
+      <div className="control-panel-actions">
+        <button className="control-icon-button" type="button" aria-label="Add control preset">
+          +
+        </button>
+        <button className="control-version-button" type="button">
+          <span>Version 1</span>
+          <span aria-hidden="true">v</span>
+        </button>
+        <button className="control-copy-button" type="button" onClick={copyControls}>
+          Copy
+        </button>
+      </div>
+
+      <div className="control-panel-divider" />
+
+      <section className="control-section">
+        <div className="control-section-title">
+          <span>General</span>
+          <span aria-hidden="true">^</span>
+        </div>
+
+        <div className="control-mode-row" role="group" aria-label="Globe color mode">
+          {(["dark", "light"] as const).map((themeOption) => (
+            <button
+              key={themeOption}
+              className={controls.theme === themeOption ? "is-active" : ""}
+              type="button"
+              aria-pressed={controls.theme === themeOption}
+              onClick={() => updateControl("theme", themeOption)}
+            >
+              {themeOption}
+            </button>
+          ))}
+        </div>
+
+        <ControlRange
+          label="Rotation Speed"
+          value={controls.rotationSpeed}
+          min={0.2}
+          max={2.4}
+          step={0.1}
+          displayValue={`${controls.rotationSpeed.toFixed(1)}x`}
+          onChange={(value) => updateControl("rotationSpeed", value)}
+        />
+
+        <ControlRange
+          label="Continents"
+          value={controls.continentIntensity}
+          min={0.65}
+          max={1.75}
+          step={0.05}
+          displayValue={controls.continentIntensity.toFixed(2)}
+          onChange={(value) => updateControl("continentIntensity", value)}
+        />
+      </section>
+
+      <section className="control-section control-section-collapsed">
+        <div className="control-section-title">
+          <span>Routes</span>
+          <span aria-hidden="true">v</span>
+        </div>
+      </section>
+
+      <button className="control-reset-button" type="button" onClick={resetControls}>
+        Reset globe
+      </button>
+    </aside>
+  );
+}
+
 function GlobeGroup({
   onDraggingChange,
   onInteractionStateChange,
   prefersReducedMotion,
   isCompactViewport,
+  controls,
 }: GlobeInteractionProps) {
   const yawGroupRef = useRef<Group>(null);
   const tiltGroupRef = useRef<Group>(null);
@@ -1284,7 +1488,9 @@ function GlobeGroup({
       velocity.y = 0;
     }
 
-    const idleSpeed = prefersReducedMotion ? REDUCED_MOTION_IDLE_SPEED : IDLE_ROTATION_SPEED;
+    const idleSpeed = prefersReducedMotion
+      ? REDUCED_MOTION_IDLE_SPEED
+      : IDLE_ROTATION_SPEED * controls.rotationSpeed;
     if (autoRotationResumeDelayRef.current <= 0) {
       yawGroupRef.current.rotation.y += delta * idleSpeed * getIdleBlend(Math.max(Math.abs(velocity.x), Math.abs(velocity.y)));
     }
@@ -1404,7 +1610,7 @@ function GlobeGroup({
     >
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, DEFAULT_ROTATION_Y, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
-          <DigitalGlobeSurface />
+          <DigitalGlobeSurface theme={controls.theme} continentIntensity={controls.continentIntensity} />
           {SHOW_NETWORK_LAYER ? (
             <NetworkRouteLayer prefersReducedMotion={prefersReducedMotion} isCompactViewport={isCompactViewport} />
           ) : null}
@@ -1419,6 +1625,7 @@ function GlobeScene({
   onInteractionStateChange,
   prefersReducedMotion,
   isCompactViewport,
+  controls,
 }: GlobeSceneProps) {
   return (
     <>
@@ -1432,6 +1639,7 @@ function GlobeScene({
         onInteractionStateChange={onInteractionStateChange}
         prefersReducedMotion={prefersReducedMotion}
         isCompactViewport={isCompactViewport}
+        controls={controls}
       />
       <DebugCenteringGuides />
     </>
@@ -1441,6 +1649,7 @@ function GlobeScene({
 export function GlobeComponent() {
   const [isDragging, setIsDragging] = useState(false);
   const [interactionState, setInteractionState] = useState<InteractionState>("idle");
+  const [controls, setControls] = useState<GlobeControlsState>(DEFAULT_GLOBE_CONTROLS);
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const isCompactViewport = useMediaQuery(COMPACT_MEDIA_QUERY);
   const canvasDpr = useMemo<[number, number]>(
@@ -1450,12 +1659,13 @@ export function GlobeComponent() {
 
   return (
     <section
-      className={`globe-section is-${interactionState}${isDragging ? " is-dragging" : ""}${
+      className={`globe-section theme-${controls.theme} is-${interactionState}${isDragging ? " is-dragging" : ""}${
         GLOBE_DEBUG_MODE ? " is-debug" : ""
       }`}
       aria-label="Interactive dotted Earth globe"
     >
       <div className="globe-ambient" aria-hidden="true" />
+      <GlobeControlPanel controls={controls} onControlsChange={setControls} />
       <div className="globe-stage">
         <Canvas
           className="globe-canvas"
@@ -1468,6 +1678,7 @@ export function GlobeComponent() {
             onInteractionStateChange={setInteractionState}
             prefersReducedMotion={prefersReducedMotion}
             isCompactViewport={isCompactViewport}
+            controls={controls}
           />
         </Canvas>
       </div>
