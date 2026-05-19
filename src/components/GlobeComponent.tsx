@@ -1338,7 +1338,7 @@ function GlobeControlPanel({
           label="Rotation Speed"
           value={controls.rotationSpeed}
           min={0.2}
-          max={2.4}
+          max={4}
           step={0.1}
           displayValue={`${controls.rotationSpeed.toFixed(1)}x`}
           onChange={(value) => updateControl("rotationSpeed", value)}
@@ -1348,7 +1348,7 @@ function GlobeControlPanel({
           label="Intensity"
           value={controls.continentIntensity}
           min={0.65}
-          max={1.75}
+          max={3.5}
           step={0.05}
           displayValue={controls.continentIntensity.toFixed(2)}
           onChange={(value) => updateControl("continentIntensity", value)}
