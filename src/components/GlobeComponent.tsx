@@ -19,6 +19,7 @@ import {
   Line,
   LineBasicMaterial,
   MeshBasicMaterial,
+  NormalBlending,
   QuadraticBezierCurve3,
   Vector3,
   type Group,
@@ -721,7 +722,7 @@ function DigitalGlobeSurface({
           transparent
           depthTest
           depthWrite={false}
-          blending={AdditiveBlending}
+          blending={theme === "dark" ? AdditiveBlending : NormalBlending}
           uniforms={landUniforms}
           vertexShader={surfaceVertexShader}
           fragmentShader={surfaceFragmentShader}
