@@ -78,11 +78,10 @@ const ROUTE_PULSE_SPEED = 0.115;
 const ROUTE_PULSE_RADIUS = 0.023;
 const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
-const ROUTE_CORE_OPACITY = 0.44;
-const ROUTE_GLOW_OPACITY = 0.075;
-const ROUTE_HORIZON_FADE_START = -0.04;
-const ROUTE_HORIZON_FADE_END = 0.44;
-const ROUTE_MIN_VISIBLE_OPACITY = 0.42;
+const ROUTE_CORE_OPACITY = 0.54;
+const ROUTE_GLOW_OPACITY = 0.06;
+const ROUTE_HORIZON_FADE_START = -0.08;
+const ROUTE_HORIZON_FADE_END = 0.34;
 const ROUTE_BACKFACE_HIDE_THRESHOLD = -0.18;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
@@ -761,13 +760,10 @@ function NetworkRouteArc({
     const routeVisibility =
       maxRouteFacing < ROUTE_BACKFACE_HIDE_THRESHOLD
         ? 0
-        : Math.max(
-            ROUTE_MIN_VISIBLE_OPACITY,
-            clamp(
-              (maxRouteFacing - ROUTE_HORIZON_FADE_START) / (ROUTE_HORIZON_FADE_END - ROUTE_HORIZON_FADE_START),
-              0,
-              1,
-            ),
+        : clamp(
+            (maxRouteFacing - ROUTE_HORIZON_FADE_START) / (ROUTE_HORIZON_FADE_END - ROUTE_HORIZON_FADE_START),
+            0,
+            1,
           );
 
     if (coreMaterialRef.current) {
@@ -775,7 +771,7 @@ function NetworkRouteArc({
     }
 
     if (glowMaterialRef.current) {
-      glowMaterialRef.current.opacity = ROUTE_GLOW_OPACITY * routeVisibility;
+      glowMaterialRef.current.opacity = ROUTE_GLOW_OPACITY * routeVisibility * routeVisibility;
     }
 
     if (prefersReducedMotion) {
@@ -790,7 +786,7 @@ function NetworkRouteArc({
     const pulseRimDistance = Math.hypot(pulsePosition.x, pulsePosition.y) / ROUTE_SURFACE_RADIUS;
 
     if (pulseRef.current) {
-      pulseRef.current.visible = routeVisibility > 0.18 && pulseFacing > 0.48 && pulseRimDistance < 0.76;
+      pulseRef.current.visible = routeVisibility > 0.28 && pulseFacing > 0.48 && pulseRimDistance < 0.76;
       pulseRef.current.position.copy(pulsePosition);
     }
   });
