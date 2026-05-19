@@ -83,6 +83,8 @@ const ROUTE_GLOW_OPACITY = 0.06;
 const ROUTE_HORIZON_FADE_START = -0.08;
 const ROUTE_HORIZON_FADE_END = 0.34;
 const ROUTE_BACKFACE_HIDE_THRESHOLD = -0.18;
+const ROUTE_ENDPOINT_FADE_START = -0.04;
+const ROUTE_ENDPOINT_FADE_END = 0.22;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
   "nigeria",
@@ -749,6 +751,7 @@ function NetworkRouteArc({
     () => [0.14, 0.32, 0.5, 0.68, 0.86].map((progress) => curve.getPointAt(progress)),
     [curve],
   );
+  const endpointSamples = useMemo(() => [curve.getPointAt(0), curve.getPointAt(1)], [curve]);
 
   useFrame(({ clock }) => {
     const cameraDirection = cameraDirectionRef.current.copy(camera.position).normalize();
@@ -757,6 +760,16 @@ function NetworkRouteArc({
 
       return Math.max(maxFacing, sampleFacing);
     }, -1);
+    const minEndpointFacing = endpointSamples.reduce((minFacing, sample) => {
+      const sampleFacing = sample.dot(cameraDirection) / sample.length();
+
+      return Math.min(minFacing, sampleFacing);
+    }, 1);
+    const endpointVisibility = clamp(
+      (minEndpointFacing - ROUTE_ENDPOINT_FADE_START) / (ROUTE_ENDPOINT_FADE_END - ROUTE_ENDPOINT_FADE_START),
+      0,
+      1,
+    );
     const routeVisibility =
       maxRouteFacing < ROUTE_BACKFACE_HIDE_THRESHOLD
         ? 0
@@ -764,7 +777,7 @@ function NetworkRouteArc({
             (maxRouteFacing - ROUTE_HORIZON_FADE_START) / (ROUTE_HORIZON_FADE_END - ROUTE_HORIZON_FADE_START),
             0,
             1,
-          );
+          ) * endpointVisibility;
 
     if (coreMaterialRef.current) {
       coreMaterialRef.current.opacity = ROUTE_CORE_OPACITY * routeVisibility;
