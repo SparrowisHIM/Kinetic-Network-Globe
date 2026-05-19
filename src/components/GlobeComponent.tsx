@@ -51,9 +51,12 @@ const MOMENTUM_FRICTION = 0.88;
 const MOMENTUM_EPSILON = 0.0025;
 const AUTO_ROTATION_RESUME_DELAY = 0.65;
 const IDLE_BLEND_START_VELOCITY = 0.16;
-const VERTICAL_RETURN_EASING = 2.65;
-const REDUCED_MOTION_VERTICAL_RETURN_EASING = 1.55;
+const VERTICAL_RETURN_STIFFNESS = 18;
+const VERTICAL_RETURN_DAMPING = 7.8;
+const REDUCED_MOTION_VERTICAL_RETURN_STIFFNESS = 9;
+const REDUCED_MOTION_VERTICAL_RETURN_DAMPING = 6.2;
 const VERTICAL_RETURN_EPSILON = 0.0015;
+const VERTICAL_RETURN_VELOCITY_EPSILON = 0.002;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
@@ -167,6 +170,17 @@ function dampVelocity(velocity: number, friction: number, delta: number) {
 
 function dampValue(current: number, target: number, smoothing: number, delta: number) {
   return current + (target - current) * (1 - Math.exp(-smoothing * delta));
+}
+
+function stepSpring(current: number, velocity: number, target: number, stiffness: number, damping: number, delta: number) {
+  const springForce = (target - current) * stiffness;
+  const dampingForce = velocity * damping;
+  const nextVelocity = velocity + (springForce - dampingForce) * delta;
+
+  return {
+    nextValue: current + nextVelocity * delta,
+    nextVelocity,
+  };
 }
 
 function getIdleBlend(horizontalVelocity: number) {
@@ -1105,6 +1119,7 @@ function GlobeGroup({
   const activePointerTargetRef = useRef<Element | null>(null);
   const previousPointerRef = useRef<PointerPosition | null>(null);
   const angularVelocityRef = useRef<AngularVelocity>({ x: 0, y: 0 });
+  const verticalReturnVelocityRef = useRef(0);
   const interactionStateRef = useRef<InteractionState>("idle");
   const interactionEnergyRef = useRef(0);
   const autoRotationResumeDelayRef = useRef(0);
@@ -1130,9 +1145,12 @@ function GlobeGroup({
     tiltGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
 
     const velocity = angularVelocityRef.current;
-    const hasMomentum = Math.hypot(velocity.x, velocity.y) > MOMENTUM_EPSILON;
+    const hasVerticalMomentum = Math.abs(velocity.x) > MOMENTUM_EPSILON;
+    const hasHorizontalMomentum = Math.abs(velocity.y) > MOMENTUM_EPSILON;
+    const hasMomentum = hasVerticalMomentum || hasHorizontalMomentum;
 
     if (isDraggingRef.current) {
+      verticalReturnVelocityRef.current = 0;
       const dragEnergy = prefersReducedMotion ? 0.42 : 1;
       interactionEnergyRef.current = dampValue(interactionEnergyRef.current, dragEnergy, INTERACTION_ENERGY_EASING, delta);
       return;
@@ -1141,9 +1159,10 @@ function GlobeGroup({
     autoRotationResumeDelayRef.current = Math.max(0, autoRotationResumeDelayRef.current - delta);
 
     const shouldReturnVerticalRotation =
-      !hasMomentum &&
+      !hasVerticalMomentum &&
       autoRotationResumeDelayRef.current <= 0 &&
-      Math.abs(yawGroupRef.current.rotation.x) > VERTICAL_RETURN_EPSILON;
+      (Math.abs(yawGroupRef.current.rotation.x) > VERTICAL_RETURN_EPSILON ||
+        Math.abs(verticalReturnVelocityRef.current) > VERTICAL_RETURN_VELOCITY_EPSILON);
     const targetEnergy = hasMomentum
       ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1)
       : shouldReturnVerticalRotation
@@ -1165,31 +1184,45 @@ function GlobeGroup({
       setInteractionState("idle");
     }
 
-    if (hasMomentum) {
+    if (hasVerticalMomentum) {
+      verticalReturnVelocityRef.current = 0;
       yawGroupRef.current.rotation.x = clamp(
         yawGroupRef.current.rotation.x + velocity.x * delta,
         MIN_VERTICAL_ROTATION,
         MAX_VERTICAL_ROTATION,
       );
-      yawGroupRef.current.rotation.y += velocity.y * delta;
       velocity.x = dampVelocity(velocity.x, MOMENTUM_FRICTION, delta);
-      velocity.y = dampVelocity(velocity.y, MOMENTUM_FRICTION, delta);
     } else {
       velocity.x = 0;
-      velocity.y = 0;
 
       if (shouldReturnVerticalRotation) {
-        yawGroupRef.current.rotation.x = dampValue(
+        const { nextValue, nextVelocity } = stepSpring(
           yawGroupRef.current.rotation.x,
+          verticalReturnVelocityRef.current,
           0,
-          prefersReducedMotion ? REDUCED_MOTION_VERTICAL_RETURN_EASING : VERTICAL_RETURN_EASING,
-          delta,
+          prefersReducedMotion ? REDUCED_MOTION_VERTICAL_RETURN_STIFFNESS : VERTICAL_RETURN_STIFFNESS,
+          prefersReducedMotion ? REDUCED_MOTION_VERTICAL_RETURN_DAMPING : VERTICAL_RETURN_DAMPING,
+          Math.min(delta, 0.04),
         );
 
-        if (Math.abs(yawGroupRef.current.rotation.x) <= VERTICAL_RETURN_EPSILON) {
+        yawGroupRef.current.rotation.x = clamp(nextValue, MIN_VERTICAL_ROTATION, MAX_VERTICAL_ROTATION);
+        verticalReturnVelocityRef.current = nextVelocity;
+
+        if (
+          Math.abs(yawGroupRef.current.rotation.x) <= VERTICAL_RETURN_EPSILON &&
+          Math.abs(verticalReturnVelocityRef.current) <= VERTICAL_RETURN_VELOCITY_EPSILON
+        ) {
           yawGroupRef.current.rotation.x = 0;
+          verticalReturnVelocityRef.current = 0;
         }
       }
+    }
+
+    if (hasHorizontalMomentum) {
+      yawGroupRef.current.rotation.y += velocity.y * delta;
+      velocity.y = dampVelocity(velocity.y, MOMENTUM_FRICTION, delta);
+    } else {
+      velocity.y = 0;
     }
 
     const idleSpeed = prefersReducedMotion ? REDUCED_MOTION_IDLE_SPEED : IDLE_ROTATION_SPEED;
@@ -1285,6 +1318,7 @@ function GlobeGroup({
       activePointerTargetRef.current = event.nativeEvent.target as Element;
       activePointerTargetRef.current.setPointerCapture?.(event.pointerId);
       angularVelocityRef.current = { x: 0, y: 0 };
+      verticalReturnVelocityRef.current = 0;
       autoRotationResumeDelayRef.current = AUTO_ROTATION_RESUME_DELAY;
       if (yawGroupRef.current) yawGroupRef.current.rotation.z = DEFAULT_ROTATION_Z;
       if (tiltGroupRef.current) {
