@@ -1358,7 +1358,7 @@ function GlobeControlPanel({
           min={0.65}
           max={50}
           step={0.25}
-          displayValue={controls.continentIntensity.toFixed(2)}
+          displayValue={`${controls.continentIntensity.toFixed(1)}x`}
           onChange={(value) => updateControl("continentIntensity", value)}
         />
       </section>
