@@ -1355,7 +1355,7 @@ function GlobeControlPanel({
         <ControlRange
           label="Surface Intensity"
           value={controls.continentIntensity}
-          min={0.65}
+          min={0.5}
           max={50}
           step={0.25}
           displayValue={`${controls.continentIntensity.toFixed(1)}x`}
