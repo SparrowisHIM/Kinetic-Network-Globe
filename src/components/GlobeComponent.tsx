@@ -18,6 +18,7 @@ import {
   LinearFilter,
   Line,
   LineBasicMaterial,
+  MeshBasicMaterial,
   QuadraticBezierCurve3,
   Vector3,
   type Group,
@@ -77,6 +78,10 @@ const ROUTE_PULSE_SPEED = 0.115;
 const ROUTE_PULSE_RADIUS = 0.023;
 const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
+const ROUTE_CORE_OPACITY = 0.39;
+const ROUTE_GLOW_OPACITY = 0.1;
+const ROUTE_HORIZON_FADE_START = 0.16;
+const ROUTE_HORIZON_FADE_END = 0.62;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
   "nigeria",
@@ -736,12 +741,31 @@ function NetworkRouteArc({
   prefersReducedMotion: boolean;
 }) {
   const pulseRef = useRef<Group>(null);
+  const coreMaterialRef = useRef<MeshBasicMaterial>(null);
+  const glowMaterialRef = useRef<MeshBasicMaterial>(null);
   const camera = useThree((state) => state.camera);
   const color = useMemo(() => new Color(route.color), [route.color]);
   const accentColor = useMemo(() => new Color(route.accentColor), [route.accentColor]);
   const cameraDirectionRef = useRef(new Vector3());
+  const midpoint = useMemo(() => curve.getPointAt(0.5), [curve]);
 
   useFrame(({ clock }) => {
+    const cameraDirection = cameraDirectionRef.current.copy(camera.position).normalize();
+    const routeFacing = midpoint.dot(cameraDirection) / midpoint.length();
+    const routeVisibility = clamp(
+      (routeFacing - ROUTE_HORIZON_FADE_START) / (ROUTE_HORIZON_FADE_END - ROUTE_HORIZON_FADE_START),
+      0,
+      1,
+    );
+
+    if (coreMaterialRef.current) {
+      coreMaterialRef.current.opacity = ROUTE_CORE_OPACITY * routeVisibility;
+    }
+
+    if (glowMaterialRef.current) {
+      glowMaterialRef.current.opacity = ROUTE_GLOW_OPACITY * routeVisibility;
+    }
+
     if (!pulseRef.current) return;
 
     if (prefersReducedMotion) {
@@ -752,10 +776,10 @@ function NetworkRouteArc({
     const progress = (clock.elapsedTime * ROUTE_PULSE_SPEED + route.delay) % 1;
     const easedProgress = 0.5 - Math.cos(progress * Math.PI) * 0.5;
     const pulsePosition = curve.getPointAt(easedProgress);
-    const pulseFacing = pulsePosition.dot(cameraDirectionRef.current.copy(camera.position).normalize()) / pulsePosition.length();
+    const pulseFacing = pulsePosition.dot(cameraDirection) / pulsePosition.length();
     const pulseRimDistance = Math.hypot(pulsePosition.x, pulsePosition.y) / ROUTE_SURFACE_RADIUS;
 
-    pulseRef.current.visible = pulseFacing > 0.55 && pulseRimDistance < 0.72;
+    pulseRef.current.visible = routeVisibility > 0.18 && pulseFacing > 0.48 && pulseRimDistance < 0.76;
     pulseRef.current.position.copy(pulsePosition);
   });
 
@@ -764,9 +788,10 @@ function NetworkRouteArc({
       <mesh renderOrder={4}>
         <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS, 8, false]} />
         <meshBasicMaterial
+          ref={coreMaterialRef}
           color={color}
           transparent
-          opacity={0.31}
+          opacity={ROUTE_CORE_OPACITY}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -776,9 +801,10 @@ function NetworkRouteArc({
       <mesh renderOrder={3}>
         <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS * 2.8, 8, false]} />
         <meshBasicMaterial
+          ref={glowMaterialRef}
           color={color}
           transparent
-          opacity={0.07}
+          opacity={ROUTE_GLOW_OPACITY}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
