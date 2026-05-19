@@ -183,26 +183,24 @@ body {
 
 .globe-section::after {
   position: absolute;
-  inset: auto 8% 6%;
+  inset: auto 4% 4%;
   z-index: -2;
-  height: 14rem;
-  background:
-    radial-gradient(ellipse, rgba(43, 113, 255, 0.24), transparent 62%),
-    radial-gradient(ellipse, rgba(0, 230, 255, 0.08), transparent 74%);
+  height: 18rem;
+  background: radial-gradient(ellipse, rgba(43, 128, 255, 0.18), rgba(0, 230, 255, 0.05) 42%, transparent 78%);
   content: "";
-  filter: blur(2.5rem);
-  opacity: 0.86;
+  filter: blur(4.2rem);
+  opacity: 0.76;
   transition: opacity 420ms ease, filter 420ms ease;
 }
 
 .globe-section.is-dragging::after {
-  filter: blur(2.1rem);
-  opacity: 1;
+  filter: blur(3.8rem);
+  opacity: 0.9;
 }
 
 .globe-section.is-momentum::after,
 .globe-section.is-settling::after {
-  opacity: 0.94;
+  opacity: 0.84;
 }
 
 .globe-ambient {
@@ -210,13 +208,13 @@ body {
   inset: 0;
   z-index: -3;
   background:
-    radial-gradient(circle at center, rgba(94, 170, 255, 0.1), transparent 28rem),
-    radial-gradient(circle at center, rgba(9, 19, 42, 0), rgba(1, 3, 10, 0.82) 72%),
+    radial-gradient(circle at center, rgba(94, 170, 255, 0.08), transparent 32rem),
+    radial-gradient(circle at center, rgba(9, 19, 42, 0), rgba(1, 3, 10, 0.74) 78%),
     linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 72px 72px;
-  mask-image: radial-gradient(circle at center, black 0%, transparent 74%);
-  opacity: 0.92;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 82%);
+  opacity: 0.84;
   transition: opacity 420ms ease, filter 420ms ease;
 }
 
@@ -227,7 +225,7 @@ body {
 
 .globe-section.is-momentum .globe-ambient,
 .globe-section.is-settling .globe-ambient {
-  opacity: 0.96;
+  opacity: 0.9;
 }
 
 .globe-ambient::before {
