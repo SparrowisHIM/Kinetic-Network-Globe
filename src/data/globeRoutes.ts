@@ -6,7 +6,6 @@ export type NetworkCountryId =
   | "palestine"
   | "china"
   | "germany"
-  | "ghana"
   | "canada"
   | "russia"
   | "norway"
@@ -38,7 +37,6 @@ export const NETWORK_COUNTRIES: NetworkCountry[] = [
   { id: "palestine", label: "Palestine", flagCode: "ps", lat: 31.9522, lon: 35.2332, labelPriority: 3 },
   { id: "china", label: "China", flagCode: "cn", lat: 35.8617, lon: 104.1954, labelPriority: 8 },
   { id: "germany", label: "Germany", flagCode: "de", lat: 50.1109, lon: 8.6821, labelPriority: 9 },
-  { id: "ghana", label: "Ghana", flagCode: "gh", lat: 7.9465, lon: -1.0232, labelPriority: 4 },
   { id: "canada", label: "Canada", flagCode: "ca", lat: 56.1304, lon: -106.3468, labelPriority: 12 },
   { id: "russia", label: "Russia", flagCode: "ru", lat: 61.524, lon: 105.3188, labelPriority: 13 },
   { id: "norway", label: "Norway", flagCode: "no", lat: 60.472, lon: 8.4689, labelPriority: 11 },
