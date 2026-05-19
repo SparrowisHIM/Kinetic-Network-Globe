@@ -78,12 +78,12 @@ const ROUTE_PULSE_SPEED = 0.115;
 const ROUTE_PULSE_RADIUS = 0.023;
 const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
-const ROUTE_CORE_OPACITY = 0.39;
-const ROUTE_GLOW_OPACITY = 0.1;
-const ROUTE_HORIZON_FADE_START = 0.16;
-const ROUTE_HORIZON_FADE_END = 0.62;
-const ROUTE_SHIMMER_SPEED = 0.18;
-const ROUTE_SHIMMER_RADIUS = ROUTE_LINE_RADIUS * 1.55;
+const ROUTE_CORE_OPACITY = 0.44;
+const ROUTE_GLOW_OPACITY = 0.075;
+const ROUTE_HORIZON_FADE_START = -0.04;
+const ROUTE_HORIZON_FADE_END = 0.44;
+const ROUTE_MIN_VISIBLE_OPACITY = 0.42;
+const ROUTE_BACKFACE_HIDE_THRESHOLD = -0.18;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
   "nigeria",
@@ -740,24 +740,35 @@ function NetworkRouteArc({
   prefersReducedMotion: boolean;
 }) {
   const pulseRef = useRef<Group>(null);
-  const shimmerRef = useRef<Group>(null);
   const coreMaterialRef = useRef<MeshBasicMaterial>(null);
   const glowMaterialRef = useRef<MeshBasicMaterial>(null);
-  const shimmerMaterialRef = useRef<MeshBasicMaterial>(null);
   const camera = useThree((state) => state.camera);
   const color = useMemo(() => new Color(route.color), [route.color]);
   const accentColor = useMemo(() => new Color(route.accentColor), [route.accentColor]);
   const cameraDirectionRef = useRef(new Vector3());
-  const midpoint = useMemo(() => curve.getPointAt(0.5), [curve]);
+  const visibilitySamples = useMemo(
+    () => [0.14, 0.32, 0.5, 0.68, 0.86].map((progress) => curve.getPointAt(progress)),
+    [curve],
+  );
 
   useFrame(({ clock }) => {
     const cameraDirection = cameraDirectionRef.current.copy(camera.position).normalize();
-    const routeFacing = midpoint.dot(cameraDirection) / midpoint.length();
-    const routeVisibility = clamp(
-      (routeFacing - ROUTE_HORIZON_FADE_START) / (ROUTE_HORIZON_FADE_END - ROUTE_HORIZON_FADE_START),
-      0,
-      1,
-    );
+    const maxRouteFacing = visibilitySamples.reduce((maxFacing, sample) => {
+      const sampleFacing = sample.dot(cameraDirection) / sample.length();
+
+      return Math.max(maxFacing, sampleFacing);
+    }, -1);
+    const routeVisibility =
+      maxRouteFacing < ROUTE_BACKFACE_HIDE_THRESHOLD
+        ? 0
+        : Math.max(
+            ROUTE_MIN_VISIBLE_OPACITY,
+            clamp(
+              (maxRouteFacing - ROUTE_HORIZON_FADE_START) / (ROUTE_HORIZON_FADE_END - ROUTE_HORIZON_FADE_START),
+              0,
+              1,
+            ),
+          );
 
     if (coreMaterialRef.current) {
       coreMaterialRef.current.opacity = ROUTE_CORE_OPACITY * routeVisibility;
@@ -769,7 +780,6 @@ function NetworkRouteArc({
 
     if (prefersReducedMotion) {
       if (pulseRef.current) pulseRef.current.visible = false;
-      if (shimmerRef.current) shimmerRef.current.visible = false;
       return;
     }
 
@@ -782,22 +792,6 @@ function NetworkRouteArc({
     if (pulseRef.current) {
       pulseRef.current.visible = routeVisibility > 0.18 && pulseFacing > 0.48 && pulseRimDistance < 0.76;
       pulseRef.current.position.copy(pulsePosition);
-    }
-
-    if (!shimmerRef.current) return;
-
-    const shimmerProgress = (clock.elapsedTime * ROUTE_SHIMMER_SPEED + route.delay * 0.73) % 1;
-    const shimmerPosition = curve.getPointAt(shimmerProgress);
-    const shimmerFacing = shimmerPosition.dot(cameraDirection) / shimmerPosition.length();
-    const shimmerRimDistance = Math.hypot(shimmerPosition.x, shimmerPosition.y) / ROUTE_SURFACE_RADIUS;
-    const shimmerVisible = routeVisibility > 0.22 && shimmerFacing > 0.36 && shimmerRimDistance < 0.88;
-
-    shimmerRef.current.visible = shimmerVisible;
-    shimmerRef.current.position.copy(shimmerPosition);
-
-    if (shimmerMaterialRef.current) {
-      const shimmerEase = 0.5 - Math.cos(shimmerProgress * Math.PI * 2) * 0.5;
-      shimmerMaterialRef.current.opacity = shimmerVisible ? (0.16 + shimmerEase * 0.18) * routeVisibility : 0;
     }
   });
 
@@ -855,20 +849,6 @@ function NetworkRouteArc({
         </mesh>
       </group>
 
-      <group ref={shimmerRef} renderOrder={5}>
-        <mesh>
-          <sphereGeometry args={[ROUTE_SHIMMER_RADIUS * 2.25, ROUTE_PULSE_SEGMENTS, ROUTE_PULSE_SEGMENTS]} />
-          <meshBasicMaterial
-            ref={shimmerMaterialRef}
-            color={accentColor}
-            transparent
-            opacity={0.24}
-            depthTest
-            depthWrite={false}
-            blending={AdditiveBlending}
-          />
-        </mesh>
-      </group>
     </group>
   );
 }
