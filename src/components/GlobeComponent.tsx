@@ -1345,7 +1345,7 @@ function GlobeControlPanel({
         />
 
         <ControlRange
-          label="Continents"
+          label="Intensity"
           value={controls.continentIntensity}
           min={0.65}
           max={1.75}
