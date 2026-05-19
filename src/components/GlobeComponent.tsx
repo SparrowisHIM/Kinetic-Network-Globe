@@ -189,6 +189,9 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
   continentIntensity: 1,
 };
 
+const DARK_CONTINENT_INTENSITY_GAIN = 1.22;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 0.74;
+
 const GLOBE_THEME_PALETTES = {
   dark: {
     oceanCore: "#020915",
@@ -646,9 +649,13 @@ function DigitalGlobeSurface({
       uPointSize: { value: LAND_DOT_POINT_SIZE },
       uInnerColor: { value: palette.landInner },
       uOuterColor: { value: palette.landOuter },
-      uIntensity: { value: continentIntensity },
+      uIntensity: {
+        value:
+          continentIntensity *
+          (theme === "dark" ? DARK_CONTINENT_INTENSITY_GAIN : LIGHT_CONTINENT_INTENSITY_GAIN),
+      },
     }),
-    [continentIntensity, palette],
+    [continentIntensity, palette, theme],
   );
 
   useEffect(() => () => landGeometry.dispose(), [landGeometry]);
@@ -698,7 +705,7 @@ function DigitalGlobeSurface({
       float visibleSideLight = mix(0.76, 1.5 + topLandLift, frontLight);
       float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * uIntensity;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.86, 1.18, uIntensity);
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 1.34, clamp(uIntensity, 0.0, 2.8));
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.008) discard;
