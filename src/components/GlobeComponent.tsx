@@ -83,8 +83,8 @@ const ROUTE_GLOW_OPACITY = 0.06;
 const ROUTE_HORIZON_FADE_START = -0.08;
 const ROUTE_HORIZON_FADE_END = 0.34;
 const ROUTE_BACKFACE_HIDE_THRESHOLD = -0.18;
-const ROUTE_ENDPOINT_FADE_START = -0.24;
-const ROUTE_ENDPOINT_FADE_END = -0.02;
+const ROUTE_ENDPOINT_FADE_START = 0;
+const ROUTE_ENDPOINT_FADE_END = 0.14;
 const DESKTOP_BADGE_COUNTRY_IDS: NetworkCountryId[] = [
   "australia",
   "nigeria",
@@ -740,6 +740,7 @@ function NetworkRouteArc({
   curve: QuadraticBezierCurve3;
   prefersReducedMotion: boolean;
 }) {
+  const routeRef = useRef<Group>(null);
   const pulseRef = useRef<Group>(null);
   const coreMaterialRef = useRef<MeshBasicMaterial>(null);
   const glowMaterialRef = useRef<MeshBasicMaterial>(null);
@@ -752,16 +753,21 @@ function NetworkRouteArc({
     [curve],
   );
   const endpointSamples = useMemo(() => [curve.getPointAt(0), curve.getPointAt(1)], [curve]);
+  const worldSampleRef = useRef(new Vector3());
 
   useFrame(({ clock }) => {
+    if (!routeRef.current) return;
+
     const cameraDirection = cameraDirectionRef.current.copy(camera.position).normalize();
     const maxRouteFacing = visibilitySamples.reduce((maxFacing, sample) => {
-      const sampleFacing = sample.dot(cameraDirection) / sample.length();
+      const worldSample = routeRef.current!.localToWorld(worldSampleRef.current.copy(sample));
+      const sampleFacing = worldSample.dot(cameraDirection) / worldSample.length();
 
       return Math.max(maxFacing, sampleFacing);
     }, -1);
     const minEndpointFacing = endpointSamples.reduce((minFacing, sample) => {
-      const sampleFacing = sample.dot(cameraDirection) / sample.length();
+      const worldSample = routeRef.current!.localToWorld(worldSampleRef.current.copy(sample));
+      const sampleFacing = worldSample.dot(cameraDirection) / worldSample.length();
 
       return Math.min(minFacing, sampleFacing);
     }, 1);
@@ -795,7 +801,8 @@ function NetworkRouteArc({
     const progress = (clock.elapsedTime * ROUTE_PULSE_SPEED + route.delay) % 1;
     const easedProgress = 0.5 - Math.cos(progress * Math.PI) * 0.5;
     const pulsePosition = curve.getPointAt(easedProgress);
-    const pulseFacing = pulsePosition.dot(cameraDirection) / pulsePosition.length();
+    const worldPulsePosition = routeRef.current.localToWorld(worldSampleRef.current.copy(pulsePosition));
+    const pulseFacing = worldPulsePosition.dot(cameraDirection) / worldPulsePosition.length();
     const pulseRimDistance = Math.hypot(pulsePosition.x, pulsePosition.y) / ROUTE_SURFACE_RADIUS;
 
     if (pulseRef.current) {
@@ -805,7 +812,7 @@ function NetworkRouteArc({
   });
 
   return (
-    <group name={`network-route-${route.id}`}>
+    <group ref={routeRef} name={`network-route-${route.id}`}>
       <mesh renderOrder={4}>
         <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS, 8, false]} />
         <meshBasicMaterial
