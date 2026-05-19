@@ -1355,8 +1355,8 @@ function GlobeControlPanel({
           label="Surface Intensity"
           value={controls.continentIntensity}
           min={0.65}
-          max={5}
-          step={0.05}
+          max={50}
+          step={0.25}
           displayValue={controls.continentIntensity.toFixed(2)}
           onChange={(value) => updateControl("continentIntensity", value)}
         />
