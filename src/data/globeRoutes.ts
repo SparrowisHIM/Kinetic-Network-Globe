@@ -6,7 +6,10 @@ export type NetworkCountryId =
   | "palestine"
   | "china"
   | "germany"
-  | "saudi-arabia"
+  | "ghana"
+  | "canada"
+  | "russia"
+  | "norway"
   | "brazil"
   | "usa"
   | "japan"
@@ -34,7 +37,10 @@ export const NETWORK_COUNTRIES: NetworkCountry[] = [
   { id: "palestine", label: "Palestine", flagCode: "ps", lat: 31.9522, lon: 35.2332, labelPriority: 3 },
   { id: "china", label: "China", flagCode: "cn", lat: 35.8617, lon: 104.1954, labelPriority: 8 },
   { id: "germany", label: "Germany", flagCode: "de", lat: 50.1109, lon: 8.6821, labelPriority: 9 },
-  { id: "saudi-arabia", label: "Saudi Arabia", flagCode: "sa", lat: 23.8859, lon: 45.0792, labelPriority: 2 },
+  { id: "ghana", label: "Ghana", flagCode: "gh", lat: 7.9465, lon: -1.0232, labelPriority: 4 },
+  { id: "canada", label: "Canada", flagCode: "ca", lat: 56.1304, lon: -106.3468, labelPriority: 12 },
+  { id: "russia", label: "Russia", flagCode: "ru", lat: 61.524, lon: 105.3188, labelPriority: 13 },
+  { id: "norway", label: "Norway", flagCode: "no", lat: 60.472, lon: 8.4689, labelPriority: 11 },
   { id: "brazil", label: "Brazil", flagCode: "br", lat: -14.235, lon: -51.9253, labelPriority: 6 },
   { id: "usa", label: "USA", flagCode: "us", lat: 37.0902, lon: -95.7129, labelPriority: 5 },
   { id: "japan", label: "Japan", flagCode: "jp", lat: 36.2048, lon: 138.2529, labelPriority: 10 },
@@ -51,14 +57,6 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     delay: 0.64,
   },
   {
-    id: "nigeria-saudi-arabia",
-    from: "nigeria",
-    to: "saudi-arabia",
-    color: "#45dfff",
-    accentColor: "#d6fbff",
-    delay: 0.9,
-  },
-  {
     id: "germany-nigeria",
     from: "germany",
     to: "nigeria",
@@ -67,28 +65,12 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     delay: 0.36,
   },
   {
-    id: "palestine-saudi-arabia",
-    from: "palestine",
-    to: "saudi-arabia",
-    color: "#45dfff",
-    accentColor: "#d6fbff",
-    delay: 0.58,
-  },
-  {
     id: "palestine-spain",
     from: "palestine",
     to: "spain",
     color: "#ff9b4a",
     accentColor: "#fff0cf",
     delay: 0.72,
-  },
-  {
-    id: "saudi-arabia-japan",
-    from: "saudi-arabia",
-    to: "japan",
-    color: "#45dfff",
-    accentColor: "#d6fbff",
-    delay: 0.16,
   },
   {
     id: "germany-china",
