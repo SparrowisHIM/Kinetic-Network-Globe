@@ -189,8 +189,8 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
   continentIntensity: 1,
 };
 
-const DARK_CONTINENT_INTENSITY_GAIN = 1.22;
-const LIGHT_CONTINENT_INTENSITY_GAIN = 0.74;
+const DARK_CONTINENT_INTENSITY_GAIN = 1.4;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 0.62;
 
 const GLOBE_THEME_PALETTES = {
   dark: {
@@ -1355,7 +1355,7 @@ function GlobeControlPanel({
           label="Surface Intensity"
           value={controls.continentIntensity}
           min={0.65}
-          max={3.5}
+          max={5}
           step={0.05}
           displayValue={controls.continentIntensity.toFixed(2)}
           onChange={(value) => updateControl("continentIntensity", value)}
