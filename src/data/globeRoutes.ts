@@ -54,7 +54,6 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     color: "#ff4da6",
     accentColor: "#ffd5ec",
     delay: 0.64,
-    lift: 0.12,
   },
   {
     id: "usa-canada",
