@@ -84,9 +84,9 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     delay: 0.36,
   },
   {
-    id: "nigeria-ghana",
-    from: "nigeria",
-    to: "ghana",
+    id: "ghana-brazil",
+    from: "ghana",
+    to: "brazil",
     color: "#45dfff",
     accentColor: "#d6fbff",
     delay: 0.92,
