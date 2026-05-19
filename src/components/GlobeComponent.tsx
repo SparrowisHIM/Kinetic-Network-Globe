@@ -51,6 +51,9 @@ const MOMENTUM_FRICTION = 0.88;
 const MOMENTUM_EPSILON = 0.0025;
 const AUTO_ROTATION_RESUME_DELAY = 0.65;
 const IDLE_BLEND_START_VELOCITY = 0.16;
+const VERTICAL_RETURN_EASING = 2.65;
+const REDUCED_MOTION_VERTICAL_RETURN_EASING = 1.55;
+const VERTICAL_RETURN_EPSILON = 0.0015;
 const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
@@ -1135,7 +1138,17 @@ function GlobeGroup({
       return;
     }
 
-    const targetEnergy = hasMomentum ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1) : 0;
+    autoRotationResumeDelayRef.current = Math.max(0, autoRotationResumeDelayRef.current - delta);
+
+    const shouldReturnVerticalRotation =
+      !hasMomentum &&
+      autoRotationResumeDelayRef.current <= 0 &&
+      Math.abs(yawGroupRef.current.rotation.x) > VERTICAL_RETURN_EPSILON;
+    const targetEnergy = hasMomentum
+      ? getMomentumEnergy(velocity) * (prefersReducedMotion ? 0.45 : 1)
+      : shouldReturnVerticalRotation
+        ? 0.08
+        : 0;
 
     interactionEnergyRef.current = dampValue(
       interactionEnergyRef.current,
@@ -1146,7 +1159,7 @@ function GlobeGroup({
 
     if (hasMomentum) {
       setInteractionState("momentum");
-    } else if (interactionEnergyRef.current > 0.025) {
+    } else if (interactionEnergyRef.current > 0.025 || shouldReturnVerticalRotation) {
       setInteractionState("settling");
     } else {
       setInteractionState("idle");
@@ -1164,9 +1177,20 @@ function GlobeGroup({
     } else {
       velocity.x = 0;
       velocity.y = 0;
-    }
 
-    autoRotationResumeDelayRef.current = Math.max(0, autoRotationResumeDelayRef.current - delta);
+      if (shouldReturnVerticalRotation) {
+        yawGroupRef.current.rotation.x = dampValue(
+          yawGroupRef.current.rotation.x,
+          0,
+          prefersReducedMotion ? REDUCED_MOTION_VERTICAL_RETURN_EASING : VERTICAL_RETURN_EASING,
+          delta,
+        );
+
+        if (Math.abs(yawGroupRef.current.rotation.x) <= VERTICAL_RETURN_EPSILON) {
+          yawGroupRef.current.rotation.x = 0;
+        }
+      }
+    }
 
     const idleSpeed = prefersReducedMotion ? REDUCED_MOTION_IDLE_SPEED : IDLE_ROTATION_SPEED;
     if (autoRotationResumeDelayRef.current <= 0) {
