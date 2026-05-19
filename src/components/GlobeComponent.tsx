@@ -189,8 +189,8 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
   continentIntensity: 1,
 };
 
-const DARK_CONTINENT_INTENSITY_GAIN = 1.4;
-const LIGHT_CONTINENT_INTENSITY_GAIN = 0.62;
+const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 0.42;
 
 const GLOBE_THEME_PALETTES = {
   dark: {
@@ -703,9 +703,10 @@ function DigitalGlobeSurface({
       float frontLight = smoothstep(0.02, 1.0, vFacing);
       float topLandLift = vNorthLight * 0.26;
       float visibleSideLight = mix(0.76, 1.5 + topLandLift, frontLight);
-      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * uIntensity;
+      float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
+      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 1.34, clamp(uIntensity, 0.0, 2.8));
+      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0));
       vec3 color = mix(edgeColor, brightColor, frontLight);
 
       if (alpha < 0.008) discard;
