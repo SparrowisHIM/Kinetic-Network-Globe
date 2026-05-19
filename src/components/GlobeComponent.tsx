@@ -464,6 +464,7 @@ function RimAtmosphere() {
   const rimUniforms = useMemo(
     () => ({
       uGlowColor: { value: [0.48, 0.84, 1] },
+      uSoftGlowColor: { value: [0.18, 0.48, 1] },
     }),
     [],
   );
@@ -490,25 +491,18 @@ function RimAtmosphere() {
             precision highp float;
 
             uniform vec3 uGlowColor;
+            uniform vec3 uSoftGlowColor;
             varying float vRim;
 
             void main() {
-              float rim = smoothstep(0.36, 1.0, vRim);
-              float alpha = pow(rim, 2.42) * 0.25;
-              gl_FragColor = vec4(uGlowColor, alpha);
+              float rim = smoothstep(0.18, 1.0, vRim);
+              float fineEdge = pow(rim, 3.15) * 0.2;
+              float softHalo = pow(rim, 1.35) * 0.045;
+              vec3 color = mix(uSoftGlowColor, uGlowColor, smoothstep(0.52, 1.0, rim));
+
+              gl_FragColor = vec4(color, fineEdge + softHalo);
             }
           `}
-        />
-      </mesh>
-
-      <mesh scale={1.08}>
-        <sphereGeometry args={[GLOBE_RADIUS * 1.06, GLOBE_SPHERE_SEGMENTS, GLOBE_SPHERE_SEGMENTS]} />
-        <meshBasicMaterial
-          color="#2f9fff"
-          transparent
-          opacity={0.016}
-          depthWrite={false}
-          blending={AdditiveBlending}
         />
       </mesh>
     </group>
