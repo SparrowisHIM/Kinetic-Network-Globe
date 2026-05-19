@@ -206,11 +206,13 @@ function sphereCoordinateToVector(point: LandPoint, radius = ROUTE_SURFACE_RADIU
   return new Vector3(position.x, position.y, position.z);
 }
 
-function createRouteCurve(from: LandPoint, to: LandPoint) {
+function createRouteCurve(from: LandPoint, to: LandPoint, liftOverride?: number) {
   const start = sphereCoordinateToVector(from);
   const end = sphereCoordinateToVector(to);
   const angle = start.angleTo(end);
-  const arcLift = clamp(angle * 0.42, 0.24, 0.82);
+  const highLatitudeBias = clamp((Math.max(Math.abs(from.lat), Math.abs(to.lat)) - 45) / 30, 0, 1);
+  const defaultLift = clamp(angle * 0.42, 0.24, 0.82);
+  const arcLift = liftOverride ?? defaultLift * (1 - highLatitudeBias * 0.34);
   const controlPoint = start
     .clone()
     .add(end)
@@ -699,7 +701,7 @@ function NetworkRouteLayer({
 
         return {
           route,
-          curve: createRouteCurve(from, to),
+          curve: createRouteCurve(from, to, route.lift),
         };
       }),
     [countryById],

@@ -29,6 +29,7 @@ export type NetworkRoute = {
   color: string;
   accentColor: string;
   delay: number;
+  lift?: number;
 };
 
 export const NETWORK_COUNTRIES: NetworkCountry[] = [
@@ -63,6 +64,7 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     color: "#45dfff",
     accentColor: "#d6fbff",
     delay: 0.12,
+    lift: 0.2,
   },
   {
     id: "canada-russia",
@@ -71,6 +73,7 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     color: "#8b7cff",
     accentColor: "#e7e2ff",
     delay: 0.78,
+    lift: 0.18,
   },
   {
     id: "germany-nigeria",
@@ -111,6 +114,7 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     color: "#ff9b4a",
     accentColor: "#fff0cf",
     delay: 0.5,
+    lift: 0.16,
   },
   {
     id: "russia-china",
@@ -119,6 +123,7 @@ export const NETWORK_ROUTES: NetworkRoute[] = [
     color: "#45dfff",
     accentColor: "#d6fbff",
     delay: 0.68,
+    lift: 0.22,
   },
   {
     id: "china-japan",
