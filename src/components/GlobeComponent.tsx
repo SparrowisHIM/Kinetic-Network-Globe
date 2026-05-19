@@ -190,7 +190,7 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
 };
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
-const LIGHT_CONTINENT_INTENSITY_GAIN = 0.42;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 1.08;
 
 const GLOBE_THEME_PALETTES = {
   dark: {
@@ -635,7 +635,7 @@ function DigitalGlobeSurface({
   const palette = GLOBE_THEME_PALETTES[theme];
   const shaderIntensity =
     continentIntensity * (theme === "dark" ? DARK_CONTINENT_INTENSITY_GAIN : LIGHT_CONTINENT_INTENSITY_GAIN);
-  const pointSizeGain = theme === "dark" ? 0.2 : 0.08;
+  const pointSizeGain = theme === "dark" ? 0.2 : 0.12;
   const pointSize = LAND_DOT_POINT_SIZE * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
   const landGeometry = useMemo(() => {
     const landPoints = generateLandPoints({
@@ -730,7 +730,7 @@ function DigitalGlobeSurface({
           transparent
           depthTest
           depthWrite={false}
-          blending={theme === "dark" ? AdditiveBlending : NormalBlending}
+          blending={AdditiveBlending}
           uniforms={landUniforms}
           vertexShader={surfaceVertexShader}
           fragmentShader={surfaceFragmentShader}
