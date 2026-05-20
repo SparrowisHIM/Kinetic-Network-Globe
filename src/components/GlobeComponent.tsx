@@ -231,9 +231,9 @@ const LIGHT_GLOBE_TOKENS = {
   rim: [148 / 255, 163 / 255, 184 / 255],
   rimStrong: [96 / 255, 165 / 255, 250 / 255],
   rimHighlight: [1, 1, 1],
-  rimHighlightOpacity: 0.72,
+  rimHighlightOpacity: 0.78,
   atmosphere: [147 / 255, 197 / 255, 253 / 255],
-  atmosphereOpacity: 0.22,
+  atmosphereOpacity: 0.16,
   routeCyan: "#06a6b3",
   routePurple: "#7c3aed",
   routePink: "#e11d48",
@@ -300,7 +300,7 @@ const GLOBE_THEME_PALETTES = {
     oceanGlow: [0.66, 0.76, 0.88],
     rimGlow: LIGHT_GLOBE_TOKENS.rimStrong,
     rimSoft: LIGHT_GLOBE_TOKENS.rim,
-    rimIntensity: 2.46,
+    rimIntensity: 2.28,
     landInner: LIGHT_GLOBE_TOKENS.landDotMid,
     landOuter: LIGHT_GLOBE_TOKENS.landDotFront,
   },
@@ -776,15 +776,15 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
               vec3 darkColor = mix(uSoftGlowColor, uGlowColor, smoothstep(0.52, 1.0, rim));
               float darkAlpha = (darkFineEdge + darkSoftHalo) * uRimIntensity;
 
-              float lightAtmosphere = pow(rim, 1.18) * 0.22;
-              float lightMainRim = pow(rim, 1.9) * 0.5;
-              float lightAccent = pow(rim, 3.45) * 0.26;
-              float lightHighlight = pow(rim, 4.6) * 0.82;
+              float lightAtmosphere = pow(rim, 1.22) * 0.16;
+              float lightMainRim = pow(rim, 1.95) * 0.32;
+              float lightAccent = pow(rim, 3.6) * 0.26;
+              float lightHighlight = pow(rim, 4.7) * 0.78;
               vec3 lightColor = uLightAtmosphere * lightAtmosphere;
               lightColor += uLightRim * lightMainRim;
               lightColor += uLightRimStrong * lightAccent;
               lightColor += uLightRimHighlight * lightHighlight;
-              float lightAlpha = clamp(lightAtmosphere + lightMainRim + lightAccent * 0.28 + lightHighlight * 0.44, 0.0, 0.74);
+              float lightAlpha = clamp(lightAtmosphere + lightMainRim + lightAccent * 0.3 + lightHighlight * 0.46, 0.0, 0.62);
 
               gl_FragColor = vec4(mix(darkColor, lightColor, uLightTheme), mix(darkAlpha, lightAlpha, uLightTheme));
             }
