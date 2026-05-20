@@ -610,8 +610,13 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
       uGlowColor: { value: palette.rimGlow },
       uSoftGlowColor: { value: palette.rimSoft },
       uRimIntensity: { value: palette.rimIntensity },
+      uLightTheme: { value: theme === "light" ? 1 : 0 },
+      uLightRim: { value: LIGHT_GLOBE_TOKENS.rim },
+      uLightRimStrong: { value: LIGHT_GLOBE_TOKENS.rimStrong },
+      uLightRimHighlight: { value: LIGHT_GLOBE_TOKENS.rimHighlight },
+      uLightAtmosphere: { value: LIGHT_GLOBE_TOKENS.atmosphere },
     }),
-    [palette],
+    [palette, theme],
   );
 
   return (
@@ -638,15 +643,31 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
             uniform vec3 uGlowColor;
             uniform vec3 uSoftGlowColor;
             uniform float uRimIntensity;
+            uniform float uLightTheme;
+            uniform vec3 uLightRim;
+            uniform vec3 uLightRimStrong;
+            uniform vec3 uLightRimHighlight;
+            uniform vec3 uLightAtmosphere;
             varying float vRim;
 
             void main() {
               float rim = smoothstep(0.18, 1.0, vRim);
-              float fineEdge = pow(rim, 3.15) * 0.2;
-              float softHalo = pow(rim, 1.35) * 0.045;
-              vec3 color = mix(uSoftGlowColor, uGlowColor, smoothstep(0.52, 1.0, rim));
+              float darkFineEdge = pow(rim, 3.15) * 0.2;
+              float darkSoftHalo = pow(rim, 1.35) * 0.045;
+              vec3 darkColor = mix(uSoftGlowColor, uGlowColor, smoothstep(0.52, 1.0, rim));
+              float darkAlpha = (darkFineEdge + darkSoftHalo) * uRimIntensity;
 
-              gl_FragColor = vec4(color, (fineEdge + softHalo) * uRimIntensity);
+              float lightAtmosphere = pow(rim, 1.2) * 0.22;
+              float lightMainRim = pow(rim, 2.15) * 0.38;
+              float lightAccent = pow(rim, 3.1) * 0.42;
+              float lightHighlight = pow(rim, 5.2) * 0.72;
+              vec3 lightColor = uLightAtmosphere * lightAtmosphere;
+              lightColor += uLightRim * lightMainRim;
+              lightColor += uLightRimStrong * lightAccent;
+              lightColor += uLightRimHighlight * lightHighlight;
+              float lightAlpha = clamp(lightAtmosphere + lightMainRim + lightAccent * 0.44 + lightHighlight * 0.34, 0.0, 0.62);
+
+              gl_FragColor = vec4(mix(darkColor, lightColor, uLightTheme), mix(darkAlpha, lightAlpha, uLightTheme));
             }
           `}
         />
