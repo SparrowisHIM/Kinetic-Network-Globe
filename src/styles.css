@@ -109,11 +109,11 @@ body {
   --globe-light-marker-ring-shadow: 0 0 0 3px rgba(255, 255, 255, 0.84);
   --globe-canvas-bg:
     radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 250, 243, 0.82) 30%, transparent 58%),
-    radial-gradient(circle at 70% 60%, rgba(219, 234, 254, 0.58) 0%, rgba(239, 246, 255, 0.38) 42%, transparent 70%),
+    radial-gradient(circle at 70% 60%, rgba(219, 234, 254, 0.42) 0%, rgba(248, 250, 252, 0.3) 42%, transparent 70%),
     linear-gradient(
       135deg,
       var(--globe-light-page-bg-start) 0%,
-      var(--globe-light-page-bg-mid) 46%,
+      var(--globe-light-page-bg-mid) 54%,
       var(--globe-light-page-bg-end) 100%
     );
   --globe-atmosphere-strong: color-mix(in srgb, var(--globe-light-atmosphere), transparent 84%);
@@ -320,23 +320,23 @@ body {
 }
 
 .globe-section.theme-light::after {
-  inset: auto 12% 4%;
-  height: 16rem;
+  inset: auto 15% 3%;
+  height: 15rem;
   background:
-    radial-gradient(ellipse, var(--globe-light-inner-shadow), rgba(59, 130, 246, 0.08) 38%, transparent 74%);
+    radial-gradient(ellipse, rgba(15, 23, 42, 0.16), rgba(59, 130, 246, 0.05) 42%, transparent 76%);
   box-shadow:
-    0 32px 90px rgba(15, 23, 42, 0.12),
-    0 12px 40px rgba(59, 130, 246, 0.08);
-  filter: blur(3.4rem);
-  opacity: 0.74;
+    0 34px 92px rgba(15, 23, 42, 0.14),
+    0 10px 34px rgba(59, 130, 246, 0.05);
+  filter: blur(3.2rem);
+  opacity: 0.82;
 }
 
 .globe-section.theme-light .globe-stage {
   position: relative;
   filter:
-    drop-shadow(0 32px 90px rgba(15, 23, 42, 0.12))
-    drop-shadow(0 12px 40px rgba(59, 130, 246, 0.08))
-    drop-shadow(0 0 0.9rem color-mix(in srgb, var(--globe-light-rim), transparent 68%));
+    drop-shadow(0 34px 92px rgba(15, 23, 42, 0.15))
+    drop-shadow(0 10px 34px rgba(59, 130, 246, 0.05))
+    drop-shadow(0 0 0.72rem color-mix(in srgb, var(--globe-light-rim), transparent 72%));
 }
 
 .globe-section.theme-light .globe-stage::before {
@@ -344,10 +344,10 @@ body {
   inset: 6%;
   z-index: -1;
   border-radius: 999px;
-  background: radial-gradient(circle, var(--globe-light-atmosphere), transparent 65%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--globe-light-atmosphere), transparent 16%), transparent 65%);
   content: "";
   filter: blur(28px);
-  opacity: 0.65;
+  opacity: 0.5;
   pointer-events: none;
 }
 
@@ -360,10 +360,10 @@ body {
 
 .globe-section.theme-light .globe-ambient {
   background:
-    radial-gradient(circle at center, color-mix(in srgb, var(--globe-light-atmosphere), transparent 68%), transparent 24rem),
+    radial-gradient(circle at center, color-mix(in srgb, var(--globe-light-atmosphere), transparent 76%), transparent 24rem),
     radial-gradient(circle at center, rgba(255, 255, 255, 0), transparent 34rem);
   mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
-  opacity: 0.5;
+  opacity: 0.38;
 }
 
 .globe-section.theme-light .globe-ambient::before {
