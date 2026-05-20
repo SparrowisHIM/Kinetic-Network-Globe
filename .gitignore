@@ -10,3 +10,4 @@ vite.config.js
 .route-check.png
 reference-frame-*.png
 .debug-*.png
+.audit-*.png
