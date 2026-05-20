@@ -213,7 +213,7 @@ const GLOBE_THEME_PALETTES = {
     oceanGlow: [0.35, 0.62, 0.76],
     rimGlow: [0.48, 0.68, 0.86],
     rimSoft: [0.78, 0.9, 0.98],
-    rimIntensity: 1.74,
+    rimIntensity: 2.22,
     landInner: [0.04, 0.11, 0.24],
     landOuter: [0.06, 0.2, 0.42],
   },
@@ -733,7 +733,7 @@ function DigitalGlobeSurface({
 
       <GlassyOceanIllumination theme={theme} />
 
-      <SurfaceGrid />
+      <SurfaceGrid theme={theme} />
 
       <points geometry={landGeometry}>
         <shaderMaterial
@@ -1084,15 +1084,16 @@ function NetworkCountryMarker({
   );
 }
 
-function SurfaceGrid() {
+function SurfaceGrid({ theme }: { theme: GlobeTheme }) {
   const gridLines = useMemo(() => {
+    const isLightTheme = theme === "light";
     const materialOptions = {
-      color: "#2a9fff",
+      color: isLightTheme ? "#7890ad" : "#2a9fff",
       transparent: true,
-      opacity: 0.022,
+      opacity: isLightTheme ? 0.048 : 0.022,
       depthTest: true,
       depthWrite: false,
-      blending: AdditiveBlending,
+      blending: isLightTheme ? NormalBlending : AdditiveBlending,
     };
     const lines: Line[] = [];
 
@@ -1113,7 +1114,7 @@ function SurfaceGrid() {
     }
 
     return lines;
-  }, []);
+  }, [theme]);
 
   useEffect(
     () => () => {

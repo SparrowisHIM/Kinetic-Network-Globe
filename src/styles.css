@@ -295,11 +295,15 @@ body {
 }
 
 .globe-section.theme-light .globe-stage {
-  filter: drop-shadow(0 1.45rem 2.8rem rgba(5, 31, 48, 0.22));
+  filter:
+    drop-shadow(0 1.45rem 2.8rem rgba(5, 31, 48, 0.2))
+    drop-shadow(0 0 1.05rem rgba(136, 178, 220, 0.46));
 }
 
 .globe-section.theme-light.is-dragging .globe-stage {
-  filter: drop-shadow(0 1.35rem 2.5rem rgba(5, 31, 48, 0.3));
+  filter:
+    drop-shadow(0 1.35rem 2.5rem rgba(5, 31, 48, 0.28))
+    drop-shadow(0 0 1.1rem rgba(112, 170, 225, 0.54));
 }
 
 .globe-section.theme-light .globe-ambient {
