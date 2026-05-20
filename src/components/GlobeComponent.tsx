@@ -81,6 +81,15 @@ const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
 const ROUTE_CORE_OPACITY = 0.54;
 const ROUTE_GLOW_OPACITY = 0.06;
+const LIGHT_ROUTE_CORE_OPACITY = 0.84;
+const LIGHT_ROUTE_GLOW_OPACITY = 0.17;
+const LIGHT_ROUTE_PULSE_OPACITY = 0.92;
+const LIGHT_ROUTE_GLOW_ALPHA_BY_TONE = {
+  cyan: 0.18,
+  purple: 0.16,
+  pink: 0.16,
+  gold: 0.16,
+} as const;
 const ROUTE_HORIZON_FADE_START = -0.08;
 const ROUTE_HORIZON_FADE_END = 0.34;
 const ROUTE_BACKFACE_HIDE_THRESHOLD = -0.18;
@@ -186,6 +195,8 @@ type FlagPinTextureModel = {
   texture: CanvasTexture;
   borderColors: string[];
 };
+
+type LightRouteTone = keyof typeof LIGHT_ROUTE_GLOW_ALPHA_BY_TONE;
 
 const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
   theme: "dark",
@@ -308,6 +319,24 @@ const GLOBE_THEME_PALETTES = {
     landOuter: [number, number, number];
   }
 >;
+
+const LIGHT_ROUTE_TONE_BY_DARK_COLOR: Record<string, LightRouteTone> = {
+  "#45dfff": "cyan",
+  "#8b7cff": "purple",
+  "#ff4da6": "pink",
+  "#ff9b4a": "gold",
+};
+
+const LIGHT_ROUTE_COLORS: Record<LightRouteTone, string> = {
+  cyan: LIGHT_GLOBE_TOKENS.routeCyan,
+  purple: LIGHT_GLOBE_TOKENS.routePurple,
+  pink: LIGHT_GLOBE_TOKENS.routePink,
+  gold: LIGHT_GLOBE_TOKENS.routeGold,
+};
+
+function getLightRouteTone(route: NetworkRoute): LightRouteTone {
+  return LIGHT_ROUTE_TONE_BY_DARK_COLOR[route.color.toLowerCase()] ?? "cyan";
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
