@@ -190,7 +190,7 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
 };
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
-const LIGHT_CONTINENT_INTENSITY_GAIN = 1.18;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 1.42;
 
 const GLOBE_THEME_PALETTES = {
   dark: {
@@ -214,8 +214,8 @@ const GLOBE_THEME_PALETTES = {
     rimGlow: [0.48, 0.68, 0.86],
     rimSoft: [0.78, 0.9, 0.98],
     rimIntensity: 2.22,
-    landInner: [0.04, 0.11, 0.24],
-    landOuter: [0.06, 0.2, 0.42],
+    landInner: [0.02, 0.08, 0.18],
+    landOuter: [0.04, 0.16, 0.34],
   },
 } satisfies Record<
   GlobeTheme,
@@ -711,7 +711,7 @@ function DigitalGlobeSurface({
       float topLandLift = vNorthLight * 0.26;
       float visibleSideLight = mix(0.76, 1.5 + topLandLift, frontLight);
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
-      float lightThemeAlpha = dotMask * vEdgeFade * mix(0.62, 1.18 + topLandLift * 0.2, frontLight) * mix(0.92, 1.0, vSeed) * (0.84 + log2(max(uIntensity, 1.0)) * 0.2);
+      float lightThemeAlpha = dotMask * vEdgeFade * mix(0.7, 1.28 + topLandLift * 0.22, frontLight) * mix(0.92, 1.0, vSeed) * (0.9 + log2(max(uIntensity, 1.0)) * 0.2);
       float darkThemeAlpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
       vec3 lightThemeColor = mix(edgeColor, uOuterColor, core * 0.82 + frontLight * 0.3 + topLandLift * 0.5);
