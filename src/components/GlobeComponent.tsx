@@ -137,7 +137,11 @@ type GlobeGroupProps = {
 };
 
 type InteractionState = "idle" | "dragging" | "momentum" | "settling";
-type GlobeTheme = "dark" | "light";
+export type GlobeTheme = "dark" | "light";
+
+type GlobeComponentProps = {
+  theme?: GlobeTheme;
+};
 
 type GlobeControlsState = {
   theme: GlobeTheme;
@@ -1675,10 +1679,18 @@ function GlobeScene({
   );
 }
 
-export function GlobeComponent() {
+export function GlobeComponent({ theme }: GlobeComponentProps = {}) {
   const [isDragging, setIsDragging] = useState(false);
   const [interactionState, setInteractionState] = useState<InteractionState>("idle");
   const [controls, setControls] = useState<GlobeControlsState>(DEFAULT_GLOBE_CONTROLS);
+  const activeTheme = theme ?? controls.theme;
+  const activeControls = useMemo<GlobeControlsState>(
+    () => ({
+      ...controls,
+      theme: activeTheme,
+    }),
+    [activeTheme, controls],
+  );
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const isCompactViewport = useMediaQuery(COMPACT_MEDIA_QUERY);
   const canvasDpr = useMemo<[number, number]>(
@@ -1688,13 +1700,14 @@ export function GlobeComponent() {
 
   return (
     <section
-      className={`globe-section theme-${controls.theme} is-${interactionState}${isDragging ? " is-dragging" : ""}${
+      className={`globe-section theme-${activeTheme} is-${interactionState}${isDragging ? " is-dragging" : ""}${
         GLOBE_DEBUG_MODE ? " is-debug" : ""
       }`}
+      data-theme={activeTheme}
       aria-label="Interactive dotted Earth globe"
     >
       <div className="globe-ambient" aria-hidden="true" />
-      <GlobeControlPanel controls={controls} onControlsChange={setControls} />
+      <GlobeControlPanel controls={activeControls} onControlsChange={setControls} />
       <div className="globe-stage">
         <Canvas
           className="globe-canvas"
@@ -1707,7 +1720,7 @@ export function GlobeComponent() {
             onInteractionStateChange={setInteractionState}
             prefersReducedMotion={prefersReducedMotion}
             isCompactViewport={isCompactViewport}
-            controls={controls}
+            controls={activeControls}
           />
         </Canvas>
       </div>
