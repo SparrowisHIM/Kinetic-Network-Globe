@@ -807,6 +807,7 @@ function DigitalGlobeSurface({
     attribute float aSeed;
     uniform float uPointSize;
     varying float vFacing;
+    varying float vViewFacing;
     varying float vEdgeFade;
     varying float vNorthLight;
     varying float vSeed;
@@ -817,6 +818,7 @@ function DigitalGlobeSurface({
       // viewNormal.z is strongest at the camera-facing center of the sphere.
       // It lets front dots read brightly while rim/back dots fall away.
       vFacing = smoothstep(-0.12, 0.58, viewNormal.z);
+      vViewFacing = viewNormal.z;
       vEdgeFade = smoothstep(-0.28, 0.04, viewNormal.z);
       vNorthLight = smoothstep(0.02, 0.78, sphereNormal.y);
       vSeed = aSeed;
@@ -835,6 +837,7 @@ function DigitalGlobeSurface({
     uniform float uIntensity;
     uniform float uLightTheme;
     varying float vFacing;
+    varying float vViewFacing;
     varying float vEdgeFade;
     varying float vNorthLight;
     varying float vSeed;
