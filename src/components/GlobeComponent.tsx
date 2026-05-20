@@ -190,7 +190,7 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
 };
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
-const LIGHT_CONTINENT_INTENSITY_GAIN = 1.08;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 1.18;
 
 const GLOBE_THEME_PALETTES = {
   dark: {
@@ -206,16 +206,16 @@ const GLOBE_THEME_PALETTES = {
     landOuter: [0.96, 0.99, 1],
   },
   light: {
-    oceanCore: "#071624",
-    oceanVeil: "#49d8ff",
-    oceanVeilOpacity: 0.048,
-    oceanBase: [0.02, 0.08, 0.14],
-    oceanGlow: [0.07, 0.62, 0.9],
-    rimGlow: [0.26, 0.82, 1],
-    rimSoft: [0.05, 0.34, 0.62],
-    rimIntensity: 1.82,
-    landInner: [0.5, 0.91, 1],
-    landOuter: [0.92, 0.99, 1],
+    oceanCore: "#d4e6ec",
+    oceanVeil: "#0b7fa0",
+    oceanVeilOpacity: 0.085,
+    oceanBase: [0.55, 0.72, 0.79],
+    oceanGlow: [0.02, 0.4, 0.56],
+    rimGlow: [0.02, 0.38, 0.52],
+    rimSoft: [0.62, 0.82, 0.88],
+    rimIntensity: 1.48,
+    landInner: [0.01, 0.14, 0.2],
+    landOuter: [0, 0.42, 0.52],
   },
 } satisfies Record<
   GlobeTheme,
@@ -640,7 +640,7 @@ function DigitalGlobeSurface({
   const palette = GLOBE_THEME_PALETTES[theme];
   const shaderIntensity =
     continentIntensity * (theme === "dark" ? DARK_CONTINENT_INTENSITY_GAIN : LIGHT_CONTINENT_INTENSITY_GAIN);
-  const pointSizeGain = theme === "dark" ? 0.2 : 0.12;
+  const pointSizeGain = theme === "dark" ? 0.2 : 0.07;
   const pointSize = LAND_DOT_POINT_SIZE * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
   const landGeometry = useMemo(() => {
     const landPoints = generateLandPoints({
@@ -735,7 +735,7 @@ function DigitalGlobeSurface({
           transparent
           depthTest
           depthWrite={false}
-          blending={AdditiveBlending}
+          blending={theme === "dark" ? AdditiveBlending : NormalBlending}
           uniforms={landUniforms}
           vertexShader={surfaceVertexShader}
           fragmentShader={surfaceFragmentShader}
