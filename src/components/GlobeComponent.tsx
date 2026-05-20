@@ -706,6 +706,67 @@ function GlassyOceanIllumination({ theme }: { theme: GlobeTheme }) {
   );
 }
 
+function LightGlobeBodySurface() {
+  const uniforms = useMemo(
+    () => ({
+      uSurfaceTop: { value: LIGHT_GLOBE_TOKENS.surfaceTopColor },
+      uSurfaceMid: { value: LIGHT_GLOBE_TOKENS.surfaceMidColor },
+      uSurfaceBottom: { value: LIGHT_GLOBE_TOKENS.surfaceBottomColor },
+      uInnerShadow: { value: LIGHT_GLOBE_TOKENS.innerShadowColor },
+      uInnerHighlight: { value: LIGHT_GLOBE_TOKENS.innerHighlightColor },
+    }),
+    [],
+  );
+
+  return (
+    <mesh>
+      <sphereGeometry args={[GLOBE_RADIUS * 0.985, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
+      <shaderMaterial
+        depthWrite
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec3 vSphereNormal;
+          varying float vFacing;
+
+          void main() {
+            vec3 sphereNormal = normalize(position);
+            vec3 viewNormal = normalize(normalMatrix * sphereNormal);
+            vSphereNormal = sphereNormal;
+            vFacing = clamp(viewNormal.z, 0.0, 1.0);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          precision highp float;
+
+          uniform vec3 uSurfaceTop;
+          uniform vec3 uSurfaceMid;
+          uniform vec3 uSurfaceBottom;
+          uniform vec3 uInnerShadow;
+          uniform vec3 uInnerHighlight;
+          varying vec3 vSphereNormal;
+          varying float vFacing;
+
+          void main() {
+            vec3 upperLightDirection = normalize(vec3(-0.44, 0.7, 0.55));
+            vec3 lowerDepthDirection = normalize(vec3(0.46, -0.72, 0.52));
+            float upperLight = smoothstep(-0.18, 1.0, dot(vSphereNormal, upperLightDirection));
+            float lowerDepth = smoothstep(-0.12, 1.0, dot(vSphereNormal, lowerDepthDirection));
+            float rimDepth = pow(1.0 - vFacing, 1.55);
+
+            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.58 + vFacing * 0.18);
+            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.35) * 0.62);
+            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.1 + rimDepth * 0.08);
+            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 2.4) * 0.22);
+
+            gl_FragColor = vec4(frostedColor, 1.0);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 function DigitalGlobeSurface({
   theme,
   continentIntensity,
@@ -802,10 +863,14 @@ function DigitalGlobeSurface({
 
   return (
     <group>
-      <mesh>
-        <sphereGeometry args={[GLOBE_RADIUS * 0.985, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
-        <meshBasicMaterial color={palette.oceanCore} depthWrite />
-      </mesh>
+      {theme === "light" ? (
+        <LightGlobeBodySurface />
+      ) : (
+        <mesh>
+          <sphereGeometry args={[GLOBE_RADIUS * 0.985, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
+          <meshBasicMaterial color={palette.oceanCore} depthWrite />
+        </mesh>
+      )}
 
       <GlassyOceanIllumination theme={theme} />
 
