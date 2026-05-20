@@ -851,10 +851,15 @@ function DigitalGlobeSurface({
       float topLandLift = vNorthLight * 0.26;
       float visibleSideLight = mix(0.76, 1.5 + topLandLift, frontLight);
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
-      float lightThemeAlpha = dotMask * vEdgeFade * mix(0.7, 1.28 + topLandLift * 0.22, frontLight) * mix(0.92, 1.0, vSeed) * (0.9 + log2(max(uIntensity, 1.0)) * 0.2);
+      float lightDepth = smoothstep(-0.24, 0.68, vViewFacing);
+      float lightBackPresence = smoothstep(-0.58, -0.18, vViewFacing);
+      float lightDotOpacity = mix(0.2, 0.72, lightDepth);
+      lightDotOpacity = mix(0.18, lightDotOpacity, lightBackPresence);
+      float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.12;
+      float lightThemeAlpha = dotMask * lightDotOpacity * mix(0.96, 1.0, vSeed) * lightIntensityLift;
       float darkThemeAlpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 lightThemeColor = mix(edgeColor, uOuterColor, core * 0.82 + frontLight * 0.3 + topLandLift * 0.5);
+      vec3 lightThemeColor = mix(edgeColor, uOuterColor, core * 0.18 + lightDepth * 0.12);
       vec3 darkThemeColor = mix(edgeColor, mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0)), frontLight);
       float alpha = mix(darkThemeAlpha, lightThemeAlpha, uLightTheme);
       vec3 color = mix(darkThemeColor, lightThemeColor, uLightTheme);
