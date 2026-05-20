@@ -82,10 +82,40 @@ body {
 }
 
 .globe-section.theme-light {
-  --globe-canvas-bg: linear-gradient(180deg, #ffffff 0%, #f8fbfc 52%, #ffffff 100%);
-  --globe-atmosphere-strong: rgba(14, 113, 145, 0.035);
-  --globe-atmosphere-soft: rgba(6, 31, 54, 0.032);
-  --globe-atmosphere-accent: rgba(20, 176, 220, 0.028);
+  --globe-light-page-bg-start: #fffaf3;
+  --globe-light-page-bg-mid: #f7fbff;
+  --globe-light-page-bg-end: #edf4fb;
+  --globe-light-surface-top: #f8fafc;
+  --globe-light-surface-mid: #e8eef5;
+  --globe-light-surface-bottom: #d6e0eb;
+  --globe-light-inner-shadow: rgba(15, 23, 42, 0.10);
+  --globe-light-inner-depth: rgba(15, 23, 42, 0.16);
+  --globe-light-land-dot-front: rgba(24, 36, 56, 0.72);
+  --globe-light-land-dot-mid: rgba(24, 36, 56, 0.48);
+  --globe-light-land-dot-back: rgba(24, 36, 56, 0.20);
+  --globe-light-grid: rgba(24, 36, 56, 0.075);
+  --globe-light-grid-soft: rgba(24, 36, 56, 0.045);
+  --globe-light-rim: rgba(148, 163, 184, 0.38);
+  --globe-light-rim-strong: rgba(96, 165, 250, 0.42);
+  --globe-light-rim-highlight: rgba(255, 255, 255, 0.72);
+  --globe-light-atmosphere: rgba(147, 197, 253, 0.22);
+  --globe-light-route-cyan: #06a6b3;
+  --globe-light-route-purple: #7c3aed;
+  --globe-light-route-pink: #e11d48;
+  --globe-light-route-gold: #d97706;
+  --globe-light-marker-bg: rgba(255, 255, 255, 0.92);
+  --globe-light-marker-border: rgba(255, 255, 255, 0.95);
+  --globe-light-marker-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+  --globe-light-marker-ring-shadow: 0 0 0 3px rgba(255, 255, 255, 0.84);
+  --globe-canvas-bg: linear-gradient(
+    180deg,
+    var(--globe-light-page-bg-start) 0%,
+    var(--globe-light-page-bg-mid) 52%,
+    var(--globe-light-page-bg-end) 100%
+  );
+  --globe-atmosphere-strong: color-mix(in srgb, var(--globe-light-atmosphere), transparent 84%);
+  --globe-atmosphere-soft: color-mix(in srgb, var(--globe-light-inner-shadow), transparent 70%);
+  --globe-atmosphere-accent: color-mix(in srgb, var(--globe-light-route-cyan), transparent 88%);
   --panel-bg: rgba(25, 25, 24, 0.94);
   --panel-surface: rgba(47, 47, 46, 0.84);
   --panel-surface-strong: rgba(72, 72, 70, 0.94);
@@ -289,26 +319,31 @@ body {
 .globe-section.theme-light::after {
   inset: auto 8% 5%;
   height: 15rem;
-  background: radial-gradient(ellipse, rgba(3, 31, 48, 0.22), rgba(35, 155, 184, 0.06) 42%, transparent 74%);
+  background: radial-gradient(
+    ellipse,
+    var(--globe-light-inner-depth),
+    color-mix(in srgb, var(--globe-light-atmosphere), transparent 72%) 42%,
+    transparent 74%
+  );
   filter: blur(3.8rem);
   opacity: 0.72;
 }
 
 .globe-section.theme-light .globe-stage {
   filter:
-    drop-shadow(0 1.45rem 2.8rem rgba(5, 31, 48, 0.2))
-    drop-shadow(0 0 1.05rem rgba(136, 178, 220, 0.46));
+    drop-shadow(0 1.45rem 2.8rem var(--globe-light-inner-shadow))
+    drop-shadow(0 0 1.05rem var(--globe-light-rim-strong));
 }
 
 .globe-section.theme-light.is-dragging .globe-stage {
   filter:
-    drop-shadow(0 1.35rem 2.5rem rgba(5, 31, 48, 0.28))
-    drop-shadow(0 0 1.1rem rgba(112, 170, 225, 0.54));
+    drop-shadow(0 1.35rem 2.5rem var(--globe-light-inner-depth))
+    drop-shadow(0 0 1.1rem var(--globe-light-rim-strong));
 }
 
 .globe-section.theme-light .globe-ambient {
   background:
-    radial-gradient(circle at center, rgba(10, 94, 120, 0.07), transparent 24rem),
+    radial-gradient(circle at center, color-mix(in srgb, var(--globe-light-atmosphere), transparent 68%), transparent 24rem),
     radial-gradient(circle at center, rgba(255, 255, 255, 0), transparent 34rem);
   mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
   opacity: 0.5;
@@ -316,7 +351,7 @@ body {
 
 .globe-section.theme-light .globe-ambient::before {
   inset: 16% 18%;
-  background: radial-gradient(circle, rgba(16, 141, 174, 0.1), rgba(255, 255, 255, 0) 68%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--globe-light-rim-strong), transparent 76%), rgba(255, 255, 255, 0) 68%);
 }
 
 .globe-control-panel {
