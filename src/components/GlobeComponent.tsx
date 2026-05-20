@@ -1241,13 +1241,17 @@ function NetworkCountryMarker({
 function SurfaceGrid({ theme }: { theme: GlobeTheme }) {
   const gridLines = useMemo(() => {
     const isLightTheme = theme === "light";
-    const materialOptions = {
+    const softMaterialOptions = {
       color: isLightTheme ? LIGHT_GLOBE_TOKENS.grid : "#2a9fff",
       transparent: true,
       opacity: isLightTheme ? LIGHT_GLOBE_TOKENS.gridSoftOpacity : 0.022,
       depthTest: true,
       depthWrite: false,
       blending: isLightTheme ? NormalBlending : AdditiveBlending,
+    };
+    const primaryMaterialOptions = {
+      ...softMaterialOptions,
+      opacity: isLightTheme ? LIGHT_GLOBE_TOKENS.gridOpacity : 0.022,
     };
     const lines: Line[] = [];
 
@@ -1256,7 +1260,8 @@ function SurfaceGrid({ theme }: { theme: GlobeTheme }) {
         createLatitudeLinePoints(lat, SURFACE_GRID_SEGMENT_STEP),
         GLOBE_RADIUS + 0.018,
       );
-      lines.push(new Line(geometry, new LineBasicMaterial(materialOptions)));
+      const isPrimaryLine = lat === 0 || Math.abs(lat) === 40;
+      lines.push(new Line(geometry, new LineBasicMaterial(isPrimaryLine ? primaryMaterialOptions : softMaterialOptions)));
     }
 
     for (let lon = -180; lon < 180; lon += SURFACE_GRID_LON_STEP) {
@@ -1264,7 +1269,8 @@ function SurfaceGrid({ theme }: { theme: GlobeTheme }) {
         createLongitudeLinePoints(lon, SURFACE_GRID_SEGMENT_STEP),
         GLOBE_RADIUS + 0.018,
       );
-      lines.push(new Line(geometry, new LineBasicMaterial(materialOptions)));
+      const isPrimaryLine = lon % 60 === 0;
+      lines.push(new Line(geometry, new LineBasicMaterial(isPrimaryLine ? primaryMaterialOptions : softMaterialOptions)));
     }
 
     return lines;
