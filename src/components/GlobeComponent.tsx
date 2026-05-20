@@ -203,6 +203,11 @@ const LIGHT_GLOBE_TOKENS = {
   surfaceTop: "#f8fafc",
   surfaceMid: "#e8eef5",
   surfaceBottom: "#d6e0eb",
+  surfaceTopColor: [248 / 255, 250 / 255, 252 / 255],
+  surfaceMidColor: [232 / 255, 238 / 255, 245 / 255],
+  surfaceBottomColor: [214 / 255, 224 / 255, 235 / 255],
+  innerShadowColor: [15 / 255, 23 / 255, 42 / 255],
+  innerHighlightColor: [1, 1, 1],
   innerShadow: "rgba(15, 23, 42, 0.10)",
   innerDepth: "rgba(15, 23, 42, 0.16)",
   landDotFront: [24 / 255, 36 / 255, 56 / 255],
@@ -233,6 +238,11 @@ const LIGHT_GLOBE_TOKENS = {
   surfaceTop: string;
   surfaceMid: string;
   surfaceBottom: string;
+  surfaceTopColor: [number, number, number];
+  surfaceMidColor: [number, number, number];
+  surfaceBottomColor: [number, number, number];
+  innerShadowColor: [number, number, number];
+  innerHighlightColor: [number, number, number];
   innerShadow: string;
   innerDepth: string;
   landDotFront: [number, number, number];
