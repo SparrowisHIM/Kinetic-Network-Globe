@@ -760,9 +760,11 @@ function DigitalGlobeSurface({
 function NetworkRouteLayer({
   prefersReducedMotion,
   isCompactViewport,
+  theme,
 }: {
   prefersReducedMotion: boolean;
   isCompactViewport: boolean;
+  theme: GlobeTheme;
 }) {
   const countryById = useMemo(getCountryMap, []);
   const badgeCountryIds = useMemo(
@@ -798,7 +800,7 @@ function NetworkRouteLayer({
   return (
     <group name="digital-network-route-layer">
       {routeCurves.map(({ route, curve }) => (
-        <NetworkRouteArc key={route.id} route={route} curve={curve} prefersReducedMotion={prefersReducedMotion} />
+        <NetworkRouteArc key={route.id} route={route} curve={curve} prefersReducedMotion={prefersReducedMotion} theme={theme} />
       ))}
 
       {countryPositions.map(({ country, position }) => (
@@ -818,10 +820,12 @@ function NetworkRouteArc({
   route,
   curve,
   prefersReducedMotion,
+  theme,
 }: {
   route: NetworkRoute;
   curve: QuadraticBezierCurve3;
   prefersReducedMotion: boolean;
+  theme: GlobeTheme;
 }) {
   const routeRef = useRef<Group>(null);
   const pulseRef = useRef<Group>(null);
@@ -837,6 +841,7 @@ function NetworkRouteArc({
   );
   const endpointSamples = useMemo(() => [curve.getPointAt(0), curve.getPointAt(1)], [curve]);
   const worldSampleRef = useRef(new Vector3());
+  const routeOpacityBoost = theme === "light" ? 1.26 : 1;
 
   useFrame(({ clock }) => {
     if (!routeRef.current) return;
@@ -869,11 +874,11 @@ function NetworkRouteArc({
           ) * endpointVisibility;
 
     if (coreMaterialRef.current) {
-      coreMaterialRef.current.opacity = ROUTE_CORE_OPACITY * routeVisibility;
+      coreMaterialRef.current.opacity = ROUTE_CORE_OPACITY * routeOpacityBoost * routeVisibility;
     }
 
     if (glowMaterialRef.current) {
-      glowMaterialRef.current.opacity = ROUTE_GLOW_OPACITY * routeVisibility * routeVisibility;
+      glowMaterialRef.current.opacity = ROUTE_GLOW_OPACITY * routeOpacityBoost * routeVisibility * routeVisibility;
     }
 
     if (prefersReducedMotion) {
@@ -902,7 +907,7 @@ function NetworkRouteArc({
           ref={coreMaterialRef}
           color={color}
           transparent
-          opacity={ROUTE_CORE_OPACITY}
+          opacity={ROUTE_CORE_OPACITY * routeOpacityBoost}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -915,7 +920,7 @@ function NetworkRouteArc({
           ref={glowMaterialRef}
           color={color}
           transparent
-          opacity={ROUTE_GLOW_OPACITY}
+          opacity={ROUTE_GLOW_OPACITY * routeOpacityBoost}
           depthTest
           depthWrite={false}
           blending={AdditiveBlending}
@@ -928,7 +933,7 @@ function NetworkRouteArc({
           <meshBasicMaterial
             color={accentColor}
             transparent
-            opacity={0.78}
+            opacity={theme === "light" ? 0.86 : 0.78}
             depthTest
             depthWrite={false}
             blending={AdditiveBlending}
@@ -940,7 +945,7 @@ function NetworkRouteArc({
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.14}
+            opacity={theme === "light" ? 0.18 : 0.14}
             depthTest
             depthWrite={false}
             blending={AdditiveBlending}
@@ -1632,7 +1637,11 @@ function GlobeGroup({
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface theme={controls.theme} continentIntensity={controls.continentIntensity} />
           {SHOW_NETWORK_LAYER ? (
-            <NetworkRouteLayer prefersReducedMotion={prefersReducedMotion} isCompactViewport={isCompactViewport} />
+            <NetworkRouteLayer
+              prefersReducedMotion={prefersReducedMotion}
+              isCompactViewport={isCompactViewport}
+              theme={controls.theme}
+            />
           ) : null}
         </group>
       </group>
