@@ -82,10 +82,10 @@ body {
 }
 
 .globe-section.theme-light {
-  --globe-canvas-bg: transparent;
-  --globe-atmosphere-strong: rgba(8, 74, 118, 0.06);
-  --globe-atmosphere-soft: rgba(10, 55, 90, 0.05);
-  --globe-atmosphere-accent: rgba(18, 187, 231, 0.05);
+  --globe-canvas-bg: linear-gradient(180deg, #ffffff 0%, #f8fbfc 52%, #ffffff 100%);
+  --globe-atmosphere-strong: rgba(14, 113, 145, 0.035);
+  --globe-atmosphere-soft: rgba(6, 31, 54, 0.032);
+  --globe-atmosphere-accent: rgba(20, 176, 220, 0.028);
   --panel-bg: rgba(25, 25, 24, 0.94);
   --panel-surface: rgba(47, 47, 46, 0.84);
   --panel-surface-strong: rgba(72, 72, 70, 0.94);
@@ -288,31 +288,31 @@ body {
 
 .globe-section.theme-light::after {
   inset: auto 8% 5%;
-  height: 16rem;
-  background: radial-gradient(ellipse, rgba(1, 23, 45, 0.18), rgba(26, 182, 230, 0.08) 44%, transparent 74%);
-  filter: blur(3.5rem);
-  opacity: 0.78;
+  height: 15rem;
+  background: radial-gradient(ellipse, rgba(3, 31, 48, 0.22), rgba(35, 155, 184, 0.06) 42%, transparent 74%);
+  filter: blur(3.8rem);
+  opacity: 0.72;
 }
 
 .globe-section.theme-light .globe-stage {
-  filter: drop-shadow(0 1.5rem 2.8rem rgba(1, 21, 38, 0.28));
+  filter: drop-shadow(0 1.45rem 2.8rem rgba(5, 31, 48, 0.22));
 }
 
 .globe-section.theme-light.is-dragging .globe-stage {
-  filter: drop-shadow(0 1.35rem 2.5rem rgba(1, 21, 38, 0.34));
+  filter: drop-shadow(0 1.35rem 2.5rem rgba(5, 31, 48, 0.3));
 }
 
 .globe-section.theme-light .globe-ambient {
   background:
-    radial-gradient(circle at center, rgba(3, 20, 37, 0.14), transparent 25rem),
-    radial-gradient(circle at center, rgba(19, 177, 226, 0.1), transparent 34rem);
-  mask-image: radial-gradient(circle at center, black 0%, transparent 76%);
-  opacity: 0.72;
+    radial-gradient(circle at center, rgba(10, 94, 120, 0.07), transparent 24rem),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0), transparent 34rem);
+  mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
+  opacity: 0.5;
 }
 
 .globe-section.theme-light .globe-ambient::before {
   inset: 16% 18%;
-  background: radial-gradient(circle, rgba(16, 176, 225, 0.16), rgba(255, 255, 255, 0) 68%);
+  background: radial-gradient(circle, rgba(16, 141, 174, 0.1), rgba(255, 255, 255, 0) 68%);
 }
 
 .globe-control-panel {
