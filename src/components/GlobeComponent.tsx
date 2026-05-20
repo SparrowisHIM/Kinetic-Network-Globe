@@ -196,6 +196,68 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
 const LIGHT_CONTINENT_INTENSITY_GAIN = 1.42;
 
+const LIGHT_GLOBE_TOKENS = {
+  pageBgStart: "#fffaf3",
+  pageBgMid: "#f7fbff",
+  pageBgEnd: "#edf4fb",
+  surfaceTop: "#f8fafc",
+  surfaceMid: "#e8eef5",
+  surfaceBottom: "#d6e0eb",
+  innerShadow: "rgba(15, 23, 42, 0.10)",
+  innerDepth: "rgba(15, 23, 42, 0.16)",
+  landDotFront: [24 / 255, 36 / 255, 56 / 255],
+  landDotMid: [24 / 255, 36 / 255, 56 / 255],
+  landDotBack: [24 / 255, 36 / 255, 56 / 255],
+  grid: "#182438",
+  gridOpacity: 0.075,
+  gridSoft: "#182438",
+  gridSoftOpacity: 0.045,
+  rim: [148 / 255, 163 / 255, 184 / 255],
+  rimStrong: [96 / 255, 165 / 255, 250 / 255],
+  rimHighlight: [1, 1, 1],
+  rimHighlightOpacity: 0.72,
+  atmosphere: [147 / 255, 197 / 255, 253 / 255],
+  atmosphereOpacity: 0.22,
+  routeCyan: "#06a6b3",
+  routePurple: "#7c3aed",
+  routePink: "#e11d48",
+  routeGold: "#d97706",
+  markerBg: "rgba(255, 255, 255, 0.92)",
+  markerBorder: "rgba(255, 255, 255, 0.95)",
+  markerShadow: "0 10px 28px rgba(15, 23, 42, 0.18)",
+  markerRingShadow: "0 0 0 3px rgba(255, 255, 255, 0.84)",
+} satisfies {
+  pageBgStart: string;
+  pageBgMid: string;
+  pageBgEnd: string;
+  surfaceTop: string;
+  surfaceMid: string;
+  surfaceBottom: string;
+  innerShadow: string;
+  innerDepth: string;
+  landDotFront: [number, number, number];
+  landDotMid: [number, number, number];
+  landDotBack: [number, number, number];
+  grid: string;
+  gridOpacity: number;
+  gridSoft: string;
+  gridSoftOpacity: number;
+  rim: [number, number, number];
+  rimStrong: [number, number, number];
+  rimHighlight: [number, number, number];
+  rimHighlightOpacity: number;
+  atmosphere: [number, number, number];
+  atmosphereOpacity: number;
+  routeCyan: string;
+  routePurple: string;
+  routePink: string;
+  routeGold: string;
+  markerBg: string;
+  markerBorder: string;
+  markerShadow: string;
+  markerRingShadow: string;
+};
+
 const GLOBE_THEME_PALETTES = {
   dark: {
     oceanCore: "#020915",
@@ -210,16 +272,16 @@ const GLOBE_THEME_PALETTES = {
     landOuter: [0.96, 0.99, 1],
   },
   light: {
-    oceanCore: "#e8eff3",
-    oceanVeil: "#ffffff",
+    oceanCore: LIGHT_GLOBE_TOKENS.surfaceMid,
+    oceanVeil: LIGHT_GLOBE_TOKENS.surfaceTop,
     oceanVeilOpacity: 0.18,
     oceanBase: [0.72, 0.82, 0.88],
     oceanGlow: [0.35, 0.62, 0.76],
-    rimGlow: [0.48, 0.68, 0.86],
-    rimSoft: [0.78, 0.9, 0.98],
+    rimGlow: LIGHT_GLOBE_TOKENS.rimStrong,
+    rimSoft: LIGHT_GLOBE_TOKENS.rim,
     rimIntensity: 2.22,
-    landInner: [0.02, 0.08, 0.18],
-    landOuter: [0.04, 0.16, 0.34],
+    landInner: LIGHT_GLOBE_TOKENS.landDotMid,
+    landOuter: LIGHT_GLOBE_TOKENS.landDotFront,
   },
 } satisfies Record<
   GlobeTheme,
@@ -1097,9 +1159,9 @@ function SurfaceGrid({ theme }: { theme: GlobeTheme }) {
   const gridLines = useMemo(() => {
     const isLightTheme = theme === "light";
     const materialOptions = {
-      color: isLightTheme ? "#7890ad" : "#2a9fff",
+      color: isLightTheme ? LIGHT_GLOBE_TOKENS.grid : "#2a9fff",
       transparent: true,
-      opacity: isLightTheme ? 0.048 : 0.022,
+      opacity: isLightTheme ? LIGHT_GLOBE_TOKENS.gridSoftOpacity : 0.022,
       depthTest: true,
       depthWrite: false,
       blending: isLightTheme ? NormalBlending : AdditiveBlending,
