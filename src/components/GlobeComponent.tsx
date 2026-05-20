@@ -81,7 +81,7 @@ const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
 const ROUTE_CORE_OPACITY = 0.54;
 const ROUTE_GLOW_OPACITY = 0.06;
-const LIGHT_ROUTE_CORE_OPACITY = 0.84;
+const LIGHT_ROUTE_CORE_OPACITY = 0.9;
 const LIGHT_ROUTE_PULSE_OPACITY = 0.92;
 const LIGHT_ROUTE_GLOW_ALPHA_BY_TONE = {
   cyan: 0.18,
@@ -461,11 +461,11 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
   context.setTransform(1, 0, 0, 1, 0, 0);
 
   if (theme === "light") {
-    const baseRadius = flagRadius + 12;
+    const baseRadius = flagRadius + 15;
 
     const ambientGlow = context.createRadialGradient(center, center + 8, flagRadius * 0.5, center, center + 8, glowRadius);
-    ambientGlow.addColorStop(0, colorWithAlpha(borderColors[0], 0.12));
-    ambientGlow.addColorStop(0.5, "rgba(15, 23, 42, 0.08)");
+    ambientGlow.addColorStop(0, colorWithAlpha(borderColors[0], 0.16));
+    ambientGlow.addColorStop(0.5, "rgba(15, 23, 42, 0.1)");
     ambientGlow.addColorStop(1, "rgba(15, 23, 42, 0)");
     context.fillStyle = ambientGlow;
     context.beginPath();
@@ -473,17 +473,17 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
     context.fill();
 
     context.save();
-    context.shadowColor = "rgba(15, 23, 42, 0.18)";
-    context.shadowBlur = 28;
-    context.shadowOffsetY = 10;
-    context.fillStyle = "rgba(255, 255, 255, 0.92)";
+    context.shadowColor = "rgba(15, 23, 42, 0.2)";
+    context.shadowBlur = 30;
+    context.shadowOffsetY = 11;
+    context.fillStyle = "rgba(255, 255, 255, 0.95)";
     context.beginPath();
     context.arc(center, center, baseRadius, 0, Math.PI * 2);
     context.fill();
     context.restore();
 
-    context.lineWidth = 7.5;
-    context.strokeStyle = "rgba(255, 255, 255, 0.84)";
+    context.lineWidth = 8.5;
+    context.strokeStyle = "rgba(255, 255, 255, 0.9)";
     context.beginPath();
     context.arc(center, center, ringRadius + 5, 0, Math.PI * 2);
     context.stroke();
@@ -492,7 +492,7 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
     ringColors.forEach((color, index) => {
       ringGradient.addColorStop(index / Math.max(1, ringColors.length - 1), colorWithAlpha(color, 0.98));
     });
-    context.lineWidth = 10.5;
+    context.lineWidth = 11.5;
     context.strokeStyle = ringGradient;
     context.beginPath();
     context.arc(center, center, ringRadius, 0, Math.PI * 2);
@@ -919,8 +919,8 @@ function DigitalGlobeSurface({
   const shaderIntensity =
     continentIntensity * (theme === "dark" ? DARK_CONTINENT_INTENSITY_GAIN : LIGHT_CONTINENT_INTENSITY_GAIN);
   const isLightTheme = theme === "light";
-  const pointSizeGain = isLightTheme ? 0.04 : 0.2;
-  const pointSize = LAND_DOT_POINT_SIZE * (isLightTheme ? 0.88 : 1) * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
+  const pointSizeGain = isLightTheme ? 0.035 : 0.2;
+  const pointSize = LAND_DOT_POINT_SIZE * (isLightTheme ? 0.98 : 1) * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
   const landGeometry = useMemo(() => {
     const landPoints = generateLandPoints({
       longitudeStep: DOT_SPACING,
@@ -995,13 +995,13 @@ function DigitalGlobeSurface({
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
       float lightDepth = smoothstep(-0.24, 0.68, vViewFacing);
       float lightBackPresence = smoothstep(-0.58, -0.18, vViewFacing);
-      float lightDotOpacity = mix(0.24, 0.92, lightDepth);
-      lightDotOpacity = mix(0.22, lightDotOpacity, lightBackPresence);
-      float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.18;
+      float lightDotOpacity = mix(0.26, 0.96, lightDepth);
+      lightDotOpacity = mix(0.24, lightDotOpacity, lightBackPresence);
+      float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.16;
       float lightThemeAlpha = dotMask * lightDotOpacity * mix(0.96, 1.0, vSeed) * lightIntensityLift;
       float darkThemeAlpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 lightThemeColor = mix(edgeColor * 0.78, uOuterColor * 0.9, core * 0.1 + lightDepth * 0.06);
+      vec3 lightThemeColor = mix(edgeColor * 0.66, uOuterColor * 0.84, core * 0.08 + lightDepth * 0.04);
       vec3 darkThemeColor = mix(edgeColor, mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0)), frontLight);
       float alpha = mix(darkThemeAlpha, lightThemeAlpha, uLightTheme);
       vec3 color = mix(darkThemeColor, lightThemeColor, uLightTheme);
@@ -1203,7 +1203,7 @@ function NetworkRouteArc({
   return (
     <group ref={routeRef} name={`network-route-${route.id}`}>
       <mesh renderOrder={4}>
-        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS, 8, false]} />
+        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, isLightTheme ? ROUTE_LINE_RADIUS * 1.14 : ROUTE_LINE_RADIUS, 8, false]} />
         <meshBasicMaterial
           ref={coreMaterialRef}
           color={routeColor}
