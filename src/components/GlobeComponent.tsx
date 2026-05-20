@@ -460,6 +460,76 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
   context.clearRect(0, 0, size, size);
   context.setTransform(1, 0, 0, 1, 0, 0);
 
+  if (theme === "light") {
+    const baseRadius = flagRadius + 12;
+
+    const ambientGlow = context.createRadialGradient(center, center + 8, flagRadius * 0.5, center, center + 8, glowRadius);
+    ambientGlow.addColorStop(0, colorWithAlpha(borderColors[0], 0.12));
+    ambientGlow.addColorStop(0.5, "rgba(15, 23, 42, 0.08)");
+    ambientGlow.addColorStop(1, "rgba(15, 23, 42, 0)");
+    context.fillStyle = ambientGlow;
+    context.beginPath();
+    context.arc(center, center + 8, glowRadius, 0, Math.PI * 2);
+    context.fill();
+
+    context.save();
+    context.shadowColor = "rgba(15, 23, 42, 0.18)";
+    context.shadowBlur = 28;
+    context.shadowOffsetY = 10;
+    context.fillStyle = "rgba(255, 255, 255, 0.92)";
+    context.beginPath();
+    context.arc(center, center, baseRadius, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+
+    context.lineWidth = 7.5;
+    context.strokeStyle = "rgba(255, 255, 255, 0.84)";
+    context.beginPath();
+    context.arc(center, center, ringRadius + 5, 0, Math.PI * 2);
+    context.stroke();
+
+    const ringGradient = context.createConicGradient(rotation, center, center);
+    ringColors.forEach((color, index) => {
+      ringGradient.addColorStop(index / Math.max(1, ringColors.length - 1), colorWithAlpha(color, 0.98));
+    });
+    context.lineWidth = 10.5;
+    context.strokeStyle = ringGradient;
+    context.beginPath();
+    context.arc(center, center, ringRadius, 0, Math.PI * 2);
+    context.stroke();
+
+    context.lineWidth = 4;
+    context.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    context.beginPath();
+    context.arc(center, center, flagRadius + 7, 0, Math.PI * 2);
+    context.stroke();
+
+    context.save();
+    context.beginPath();
+    context.arc(center, center, flagRadius, 0, Math.PI * 2);
+    context.clip();
+    drawImageCover(context, flagImage, center - flagRadius, center - flagRadius, flagDiameter, flagDiameter);
+    context.restore();
+
+    const innerRim = context.createLinearGradient(center - flagRadius, center - flagRadius, center + flagRadius, center + flagRadius);
+    innerRim.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+    innerRim.addColorStop(0.55, colorWithAlpha(borderColors[Math.floor(borderColors.length / 2)], 0.42));
+    innerRim.addColorStop(1, "rgba(15, 23, 42, 0.24)");
+    context.lineWidth = 3.25;
+    context.strokeStyle = innerRim;
+    context.beginPath();
+    context.arc(center, center, flagRadius, 0, Math.PI * 2);
+    context.stroke();
+
+    context.fillStyle = "rgba(255, 255, 255, 0.34)";
+    context.beginPath();
+    context.ellipse(center - 18, center - 24, 32, 13, -0.35, 0, Math.PI * 2);
+    context.fill();
+
+    texture.needsUpdate = true;
+    return;
+  }
+
   const glow = context.createRadialGradient(center, center + 10, flagRadius * 0.42, center, center + 10, glowRadius);
   glow.addColorStop(0, colorWithAlpha(borderColors[0], 0.38));
   glow.addColorStop(0.45, colorWithAlpha(borderColors[Math.floor(borderColors.length / 2)], 0.13));
