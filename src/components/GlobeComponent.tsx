@@ -32,8 +32,6 @@ const CENTER_LONGITUDE = 17;
 const CENTER_LATITUDE = 8;
 const DOT_SPACING = 0.72;
 const DOT_JITTER = DOT_SPACING * 0.09;
-const LIGHT_DOT_SPACING = 0.54;
-const LIGHT_DOT_JITTER = LIGHT_DOT_SPACING * 0.065;
 const DOT_SIZE = 1.16;
 const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 84;
@@ -679,6 +677,25 @@ function createLandDotGeometry(landPoints: LandPoint[]) {
   return geometry;
 }
 
+function createLightDenseLandPoints(landPoints: LandPoint[]) {
+  const densePoints: LandPoint[] = [];
+
+  landPoints.forEach((point, index) => {
+    densePoints.push(point);
+
+    const latitudeScale = Math.max(0.45, Math.cos((point.lat * Math.PI) / 180));
+    const lonOffset = (index % 2 === 0 ? 0.22 : -0.22) / latitudeScale;
+    const latOffset = index % 3 === 0 ? 0.16 : -0.13;
+
+    densePoints.push({
+      lon: clamp(point.lon + lonOffset, -180, 180),
+      lat: clamp(point.lat + latOffset, LAND_MIN_LATITUDE, LAND_MAX_LATITUDE),
+    });
+  });
+
+  return densePoints;
+}
+
 function getMomentumEnergy(velocity: AngularVelocity) {
   const normalizedX = Math.abs(velocity.x / MAX_VERTICAL_VELOCITY);
   const normalizedY = Math.abs(velocity.y / MAX_HORIZONTAL_VELOCITY);
@@ -905,16 +922,15 @@ function DigitalGlobeSurface({
   const pointSizeGain = isLightTheme ? 0.04 : 0.2;
   const pointSize = LAND_DOT_POINT_SIZE * (isLightTheme ? 0.88 : 1) * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
   const landGeometry = useMemo(() => {
-    const dotSpacing = isLightTheme ? LIGHT_DOT_SPACING : DOT_SPACING;
     const landPoints = generateLandPoints({
-      longitudeStep: dotSpacing,
-      latitudeStep: dotSpacing,
-      jitter: isLightTheme ? LIGHT_DOT_JITTER : DOT_JITTER,
+      longitudeStep: DOT_SPACING,
+      latitudeStep: DOT_SPACING,
+      jitter: DOT_JITTER,
       minLatitude: LAND_MIN_LATITUDE,
       maxLatitude: LAND_MAX_LATITUDE,
     });
 
-    return createLandDotGeometry(landPoints);
+    return createLandDotGeometry(isLightTheme ? createLightDenseLandPoints(landPoints) : landPoints);
   }, [isLightTheme]);
   const landUniforms = useMemo(
     () => ({
