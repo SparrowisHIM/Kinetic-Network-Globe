@@ -193,6 +193,7 @@ type FlagPinTextureModel = {
   flagImage: HTMLImageElement;
   texture: CanvasTexture;
   borderColors: string[];
+  theme: GlobeTheme;
 };
 
 type LightRouteTone = keyof typeof LIGHT_ROUTE_GLOW_ALPHA_BY_TONE;
@@ -447,7 +448,7 @@ function loadFlagImage(flagCode: string) {
 }
 
 function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
-  const { canvas, context, flagImage, texture, borderColors } = pinTexture;
+  const { canvas, context, flagImage, texture, borderColors, theme } = pinTexture;
   const size = canvas.width;
   const center = size / 2;
   const glowRadius = 112;
@@ -527,7 +528,7 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
   texture.needsUpdate = true;
 }
 
-async function createFlagPinTexture(country: NetworkCountry) {
+async function createFlagPinTexture(country: NetworkCountry, theme: GlobeTheme) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
@@ -544,6 +545,7 @@ async function createFlagPinTexture(country: NetworkCountry) {
     flagImage,
     texture,
     borderColors: FLAG_BORDER_COLORS[country.id],
+    theme,
   };
 
   texture.minFilter = LinearFilter;
@@ -1008,6 +1010,7 @@ function NetworkRouteLayer({
           position={position}
           showBadge={badgeCountryIds.has(country.id)}
           isCompactViewport={isCompactViewport}
+          theme={theme}
         />
       ))}
     </group>
@@ -1169,11 +1172,13 @@ function NetworkCountryMarker({
   position,
   showBadge,
   isCompactViewport,
+  theme,
 }: {
   country: NetworkCountry;
   position: Vector3;
   showBadge: boolean;
   isCompactViewport: boolean;
+  theme: GlobeTheme;
 }) {
   const markerRef = useRef<Group>(null);
   const camera = useThree((state) => state.camera);
@@ -1197,7 +1202,7 @@ function NetworkCountryMarker({
 
     if (!showBadge || typeof document === "undefined") return;
 
-    void createFlagPinTexture(country).then((pinTexture) => {
+    void createFlagPinTexture(country, theme).then((pinTexture) => {
       if (!pinTexture) return;
 
       if (disposed) {
@@ -1211,7 +1216,7 @@ function NetworkCountryMarker({
     return () => {
       disposed = true;
     };
-  }, [country, showBadge]);
+  }, [country, showBadge, theme]);
 
   useEffect(() => () => badgeTexture?.texture.dispose(), [badgeTexture]);
 
