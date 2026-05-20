@@ -206,16 +206,16 @@ const GLOBE_THEME_PALETTES = {
     landOuter: [0.96, 0.99, 1],
   },
   light: {
-    oceanCore: "#d4e6ec",
-    oceanVeil: "#0b7fa0",
-    oceanVeilOpacity: 0.085,
-    oceanBase: [0.55, 0.72, 0.79],
-    oceanGlow: [0.02, 0.4, 0.56],
-    rimGlow: [0.02, 0.38, 0.52],
-    rimSoft: [0.62, 0.82, 0.88],
-    rimIntensity: 1.48,
-    landInner: [0.01, 0.14, 0.2],
-    landOuter: [0, 0.42, 0.52],
+    oceanCore: "#e8eff3",
+    oceanVeil: "#ffffff",
+    oceanVeilOpacity: 0.18,
+    oceanBase: [0.72, 0.82, 0.88],
+    oceanGlow: [0.35, 0.62, 0.76],
+    rimGlow: [0.48, 0.68, 0.86],
+    rimSoft: [0.78, 0.9, 0.98],
+    rimIntensity: 1.74,
+    landInner: [0.04, 0.11, 0.24],
+    landOuter: [0.06, 0.2, 0.42],
   },
 } satisfies Record<
   GlobeTheme,
@@ -659,8 +659,9 @@ function DigitalGlobeSurface({
       uInnerColor: { value: palette.landInner },
       uOuterColor: { value: palette.landOuter },
       uIntensity: { value: shaderIntensity },
+      uLightTheme: { value: theme === "light" ? 1 : 0 },
     }),
-    [palette, pointSize, shaderIntensity],
+    [palette, pointSize, shaderIntensity, theme],
   );
 
   useEffect(() => () => landGeometry.dispose(), [landGeometry]);
@@ -695,6 +696,7 @@ function DigitalGlobeSurface({
     uniform vec3 uInnerColor;
     uniform vec3 uOuterColor;
     uniform float uIntensity;
+    uniform float uLightTheme;
     varying float vFacing;
     varying float vEdgeFade;
     varying float vNorthLight;
@@ -709,10 +711,13 @@ function DigitalGlobeSurface({
       float topLandLift = vNorthLight * 0.26;
       float visibleSideLight = mix(0.76, 1.5 + topLandLift, frontLight);
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
-      float alpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
+      float lightThemeAlpha = dotMask * vEdgeFade * mix(0.62, 1.18 + topLandLift * 0.2, frontLight) * mix(0.92, 1.0, vSeed) * (0.84 + log2(max(uIntensity, 1.0)) * 0.2);
+      float darkThemeAlpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 brightColor = mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0));
-      vec3 color = mix(edgeColor, brightColor, frontLight);
+      vec3 lightThemeColor = mix(edgeColor, uOuterColor, core * 0.82 + frontLight * 0.3 + topLandLift * 0.5);
+      vec3 darkThemeColor = mix(edgeColor, mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0)), frontLight);
+      float alpha = mix(darkThemeAlpha, lightThemeAlpha, uLightTheme);
+      vec3 color = mix(darkThemeColor, lightThemeColor, uLightTheme);
 
       if (alpha < 0.008) discard;
       gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
