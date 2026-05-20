@@ -205,7 +205,7 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
 };
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
-const LIGHT_CONTINENT_INTENSITY_GAIN = 1.42;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 1.52;
 
 const LIGHT_GLOBE_TOKENS = {
   pageBgStart: "#fffaf3",
@@ -215,8 +215,8 @@ const LIGHT_GLOBE_TOKENS = {
   surfaceMid: "#e8eef5",
   surfaceBottom: "#d6e0eb",
   surfaceTopColor: [248 / 255, 250 / 255, 252 / 255],
-  surfaceMidColor: [232 / 255, 238 / 255, 245 / 255],
-  surfaceBottomColor: [214 / 255, 224 / 255, 235 / 255],
+  surfaceMidColor: [234 / 255, 238 / 255, 244 / 255],
+  surfaceBottomColor: [218 / 255, 225 / 255, 234 / 255],
   innerShadowColor: [15 / 255, 23 / 255, 42 / 255],
   innerHighlightColor: [1, 1, 1],
   innerShadow: "rgba(15, 23, 42, 0.10)",
@@ -757,15 +757,15 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
               vec3 darkColor = mix(uSoftGlowColor, uGlowColor, smoothstep(0.52, 1.0, rim));
               float darkAlpha = (darkFineEdge + darkSoftHalo) * uRimIntensity;
 
-              float lightAtmosphere = pow(rim, 1.2) * 0.22;
-              float lightMainRim = pow(rim, 2.15) * 0.38;
-              float lightAccent = pow(rim, 3.1) * 0.42;
-              float lightHighlight = pow(rim, 5.2) * 0.72;
+              float lightAtmosphere = pow(rim, 1.22) * 0.19;
+              float lightMainRim = pow(rim, 2.05) * 0.43;
+              float lightAccent = pow(rim, 3.35) * 0.34;
+              float lightHighlight = pow(rim, 5.0) * 0.74;
               vec3 lightColor = uLightAtmosphere * lightAtmosphere;
               lightColor += uLightRim * lightMainRim;
               lightColor += uLightRimStrong * lightAccent;
               lightColor += uLightRimHighlight * lightHighlight;
-              float lightAlpha = clamp(lightAtmosphere + lightMainRim + lightAccent * 0.44 + lightHighlight * 0.34, 0.0, 0.62);
+              float lightAlpha = clamp(lightAtmosphere + lightMainRim + lightAccent * 0.36 + lightHighlight * 0.36, 0.0, 0.64);
 
               gl_FragColor = vec4(mix(darkColor, lightColor, uLightTheme), mix(darkAlpha, lightAlpha, uLightTheme));
             }
@@ -869,16 +869,16 @@ function LightGlobeBodySurface() {
           varying float vFacing;
 
           void main() {
-            vec3 upperLightDirection = normalize(vec3(-0.44, 0.7, 0.55));
-            vec3 lowerDepthDirection = normalize(vec3(0.46, -0.72, 0.52));
+            vec3 upperLightDirection = normalize(vec3(-0.46, 0.72, 0.54));
+            vec3 lowerDepthDirection = normalize(vec3(0.5, -0.74, 0.54));
             float upperLight = smoothstep(-0.18, 1.0, dot(vSphereNormal, upperLightDirection));
             float lowerDepth = smoothstep(-0.12, 1.0, dot(vSphereNormal, lowerDepthDirection));
-            float rimDepth = pow(1.0 - vFacing, 1.55);
+            float rimDepth = pow(1.0 - vFacing, 1.42);
 
-            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.58 + vFacing * 0.18);
-            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.35) * 0.62);
-            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.1 + rimDepth * 0.08);
-            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 2.4) * 0.22);
+            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.54 + vFacing * 0.2);
+            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.5) * 0.58);
+            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.12 + rimDepth * 0.095);
+            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 2.55) * 0.2);
 
             gl_FragColor = vec4(frostedColor, 1.0);
           }
@@ -974,13 +974,13 @@ function DigitalGlobeSurface({
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
       float lightDepth = smoothstep(-0.24, 0.68, vViewFacing);
       float lightBackPresence = smoothstep(-0.58, -0.18, vViewFacing);
-      float lightDotOpacity = mix(0.2, 0.72, lightDepth);
-      lightDotOpacity = mix(0.18, lightDotOpacity, lightBackPresence);
-      float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.12;
+      float lightDotOpacity = mix(0.22, 0.82, lightDepth);
+      lightDotOpacity = mix(0.2, lightDotOpacity, lightBackPresence);
+      float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.15;
       float lightThemeAlpha = dotMask * lightDotOpacity * mix(0.96, 1.0, vSeed) * lightIntensityLift;
       float darkThemeAlpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 lightThemeColor = mix(edgeColor, uOuterColor, core * 0.18 + lightDepth * 0.12);
+      vec3 lightThemeColor = mix(edgeColor * 0.92, uOuterColor, core * 0.12 + lightDepth * 0.08);
       vec3 darkThemeColor = mix(edgeColor, mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0)), frontLight);
       float alpha = mix(darkThemeAlpha, lightThemeAlpha, uLightTheme);
       vec3 color = mix(darkThemeColor, lightThemeColor, uLightTheme);
