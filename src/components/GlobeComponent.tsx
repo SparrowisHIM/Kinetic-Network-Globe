@@ -32,6 +32,8 @@ const CENTER_LONGITUDE = 17;
 const CENTER_LATITUDE = 8;
 const DOT_SPACING = 0.72;
 const DOT_JITTER = DOT_SPACING * 0.09;
+const LIGHT_DOT_SPACING = 0.54;
+const LIGHT_DOT_JITTER = LIGHT_DOT_SPACING * 0.065;
 const DOT_SIZE = 1.16;
 const LAND_MIN_LATITUDE = -62;
 const LAND_MAX_LATITUDE = 84;
@@ -205,7 +207,7 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
 };
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
-const LIGHT_CONTINENT_INTENSITY_GAIN = 1.52;
+const LIGHT_CONTINENT_INTENSITY_GAIN = 1.68;
 
 const LIGHT_GLOBE_TOKENS = {
   pageBgStart: "#fffaf3",
@@ -898,28 +900,30 @@ function DigitalGlobeSurface({
   const palette = GLOBE_THEME_PALETTES[theme];
   const shaderIntensity =
     continentIntensity * (theme === "dark" ? DARK_CONTINENT_INTENSITY_GAIN : LIGHT_CONTINENT_INTENSITY_GAIN);
-  const pointSizeGain = theme === "dark" ? 0.2 : 0.07;
-  const pointSize = LAND_DOT_POINT_SIZE * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
+  const isLightTheme = theme === "light";
+  const pointSizeGain = isLightTheme ? 0.04 : 0.2;
+  const pointSize = LAND_DOT_POINT_SIZE * (isLightTheme ? 0.88 : 1) * (1 + Math.log2(Math.max(shaderIntensity, 1)) * pointSizeGain);
   const landGeometry = useMemo(() => {
+    const dotSpacing = isLightTheme ? LIGHT_DOT_SPACING : DOT_SPACING;
     const landPoints = generateLandPoints({
-      longitudeStep: DOT_SPACING,
-      latitudeStep: DOT_SPACING,
-      jitter: DOT_JITTER,
+      longitudeStep: dotSpacing,
+      latitudeStep: dotSpacing,
+      jitter: isLightTheme ? LIGHT_DOT_JITTER : DOT_JITTER,
       minLatitude: LAND_MIN_LATITUDE,
       maxLatitude: LAND_MAX_LATITUDE,
     });
 
     return createLandDotGeometry(landPoints);
-  }, []);
+  }, [isLightTheme]);
   const landUniforms = useMemo(
     () => ({
       uPointSize: { value: pointSize },
       uInnerColor: { value: palette.landInner },
       uOuterColor: { value: palette.landOuter },
       uIntensity: { value: shaderIntensity },
-      uLightTheme: { value: theme === "light" ? 1 : 0 },
+      uLightTheme: { value: isLightTheme ? 1 : 0 },
     }),
-    [palette, pointSize, shaderIntensity, theme],
+    [isLightTheme, palette, pointSize, shaderIntensity],
   );
 
   useEffect(() => () => landGeometry.dispose(), [landGeometry]);
@@ -974,13 +978,13 @@ function DigitalGlobeSurface({
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
       float lightDepth = smoothstep(-0.24, 0.68, vViewFacing);
       float lightBackPresence = smoothstep(-0.58, -0.18, vViewFacing);
-      float lightDotOpacity = mix(0.22, 0.82, lightDepth);
-      lightDotOpacity = mix(0.2, lightDotOpacity, lightBackPresence);
-      float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.15;
+      float lightDotOpacity = mix(0.24, 0.92, lightDepth);
+      lightDotOpacity = mix(0.22, lightDotOpacity, lightBackPresence);
+      float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.18;
       float lightThemeAlpha = dotMask * lightDotOpacity * mix(0.96, 1.0, vSeed) * lightIntensityLift;
       float darkThemeAlpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
-      vec3 lightThemeColor = mix(edgeColor * 0.92, uOuterColor, core * 0.12 + lightDepth * 0.08);
+      vec3 lightThemeColor = mix(edgeColor * 0.78, uOuterColor * 0.9, core * 0.1 + lightDepth * 0.06);
       vec3 darkThemeColor = mix(edgeColor, mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0)), frontLight);
       float alpha = mix(darkThemeAlpha, lightThemeAlpha, uLightTheme);
       vec3 color = mix(darkThemeColor, lightThemeColor, uLightTheme);
