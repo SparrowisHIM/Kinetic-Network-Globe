@@ -82,7 +82,6 @@ const ROUTE_PULSE_SEGMENTS = 12;
 const ROUTE_CORE_OPACITY = 0.54;
 const ROUTE_GLOW_OPACITY = 0.06;
 const LIGHT_ROUTE_CORE_OPACITY = 0.84;
-const LIGHT_ROUTE_GLOW_OPACITY = 0.17;
 const LIGHT_ROUTE_PULSE_OPACITY = 0.92;
 const LIGHT_ROUTE_GLOW_ALPHA_BY_TONE = {
   cyan: 0.18,
@@ -1031,8 +1030,18 @@ function NetworkRouteArc({
   const coreMaterialRef = useRef<MeshBasicMaterial>(null);
   const glowMaterialRef = useRef<MeshBasicMaterial>(null);
   const camera = useThree((state) => state.camera);
-  const color = useMemo(() => new Color(route.color), [route.color]);
-  const accentColor = useMemo(() => new Color(route.accentColor), [route.accentColor]);
+  const isLightTheme = theme === "light";
+  const lightRouteTone = useMemo(() => getLightRouteTone(route), [route]);
+  const routeColor = useMemo(
+    () => new Color(isLightTheme ? LIGHT_ROUTE_COLORS[lightRouteTone] : route.color),
+    [isLightTheme, lightRouteTone, route.color],
+  );
+  const pulseColor = useMemo(
+    () => new Color(isLightTheme ? LIGHT_ROUTE_COLORS[lightRouteTone] : route.accentColor),
+    [isLightTheme, lightRouteTone, route.accentColor],
+  );
+  const routeCoreOpacity = isLightTheme ? LIGHT_ROUTE_CORE_OPACITY : ROUTE_CORE_OPACITY;
+  const routeGlowOpacity = isLightTheme ? LIGHT_ROUTE_GLOW_ALPHA_BY_TONE[lightRouteTone] : ROUTE_GLOW_OPACITY;
   const cameraDirectionRef = useRef(new Vector3());
   const visibilitySamples = useMemo(
     () => [0.14, 0.32, 0.5, 0.68, 0.86].map((progress) => curve.getPointAt(progress)),
@@ -1040,7 +1049,6 @@ function NetworkRouteArc({
   );
   const endpointSamples = useMemo(() => [curve.getPointAt(0), curve.getPointAt(1)], [curve]);
   const worldSampleRef = useRef(new Vector3());
-  const routeOpacityBoost = theme === "light" ? 1.26 : 1;
 
   useFrame(({ clock }) => {
     if (!routeRef.current) return;
@@ -1073,11 +1081,11 @@ function NetworkRouteArc({
           ) * endpointVisibility;
 
     if (coreMaterialRef.current) {
-      coreMaterialRef.current.opacity = ROUTE_CORE_OPACITY * routeOpacityBoost * routeVisibility;
+      coreMaterialRef.current.opacity = routeCoreOpacity * routeVisibility;
     }
 
     if (glowMaterialRef.current) {
-      glowMaterialRef.current.opacity = ROUTE_GLOW_OPACITY * routeOpacityBoost * routeVisibility * routeVisibility;
+      glowMaterialRef.current.opacity = routeGlowOpacity * routeVisibility * routeVisibility;
     }
 
     if (prefersReducedMotion) {
@@ -1104,12 +1112,12 @@ function NetworkRouteArc({
         <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS, 8, false]} />
         <meshBasicMaterial
           ref={coreMaterialRef}
-          color={color}
+          color={routeColor}
           transparent
-          opacity={ROUTE_CORE_OPACITY * routeOpacityBoost}
+          opacity={routeCoreOpacity}
           depthTest
           depthWrite={false}
-          blending={AdditiveBlending}
+          blending={isLightTheme ? NormalBlending : AdditiveBlending}
         />
       </mesh>
 
@@ -1117,12 +1125,12 @@ function NetworkRouteArc({
         <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS * 2.8, 8, false]} />
         <meshBasicMaterial
           ref={glowMaterialRef}
-          color={color}
+          color={routeColor}
           transparent
-          opacity={ROUTE_GLOW_OPACITY * routeOpacityBoost}
+          opacity={routeGlowOpacity}
           depthTest
           depthWrite={false}
-          blending={AdditiveBlending}
+          blending={isLightTheme ? NormalBlending : AdditiveBlending}
         />
       </mesh>
 
@@ -1130,24 +1138,24 @@ function NetworkRouteArc({
         <mesh>
           <sphereGeometry args={[ROUTE_PULSE_RADIUS, ROUTE_PULSE_SEGMENTS, ROUTE_PULSE_SEGMENTS]} />
           <meshBasicMaterial
-            color={accentColor}
+            color={pulseColor}
             transparent
-            opacity={theme === "light" ? 0.86 : 0.78}
+            opacity={isLightTheme ? LIGHT_ROUTE_PULSE_OPACITY : 0.78}
             depthTest
             depthWrite={false}
-            blending={AdditiveBlending}
+            blending={isLightTheme ? NormalBlending : AdditiveBlending}
           />
         </mesh>
 
         <mesh>
           <sphereGeometry args={[ROUTE_PULSE_RADIUS * 2.4, ROUTE_PULSE_SEGMENTS, ROUTE_PULSE_SEGMENTS]} />
           <meshBasicMaterial
-            color={color}
+            color={routeColor}
             transparent
-            opacity={theme === "light" ? 0.18 : 0.14}
+            opacity={isLightTheme ? routeGlowOpacity : 0.14}
             depthTest
             depthWrite={false}
-            blending={AdditiveBlending}
+            blending={isLightTheme ? NormalBlending : AdditiveBlending}
           />
         </mesh>
       </group>
