@@ -797,15 +797,17 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
 
 function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
   const isLightTheme = theme === "light";
+  const mainInnerRadius = GLOBE_RADIUS * (isLightTheme ? 0.952 : 1.004);
+  const mainOuterRadius = GLOBE_RADIUS * (isLightTheme ? 1.062 : 1.057);
 
   return (
     <group name="viewport-rim-polish" renderOrder={20}>
       <mesh>
-        <ringGeometry args={[GLOBE_RADIUS * 1.004, GLOBE_RADIUS * 1.057, 256]} />
+        <ringGeometry args={[mainInnerRadius, mainOuterRadius, 256]} />
         <meshBasicMaterial
           color={isLightTheme ? "#d8e3ef" : "#2a9fff"}
           transparent
-          opacity={isLightTheme ? 0.22 : 0.14}
+          opacity={isLightTheme ? 0.18 : 0.14}
           depthTest={false}
           depthWrite={false}
           blending={isLightTheme ? NormalBlending : AdditiveBlending}
