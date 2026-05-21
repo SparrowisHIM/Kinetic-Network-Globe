@@ -71,7 +71,7 @@ const GLOBE_SPHERE_SEGMENTS = 192;
 const GLOBE_DETAIL_SEGMENTS = 128;
 const SURFACE_GRID_LAT_STEP = 20;
 const SURFACE_GRID_LON_STEP = 20;
-const SURFACE_GRID_SEGMENT_STEP = 2;
+const SURFACE_GRID_SEGMENT_STEP = 1;
 const ROUTE_SURFACE_RADIUS = GLOBE_RADIUS + 0.05;
 const ROUTE_CURVE_SEGMENTS = 80;
 const ROUTE_LINE_RADIUS = 0.0042;
@@ -225,9 +225,9 @@ const LIGHT_GLOBE_TOKENS = {
   landDotMid: [15 / 255, 23 / 255, 42 / 255],
   landDotBack: [15 / 255, 23 / 255, 42 / 255],
   grid: "#182438",
-  gridOpacity: 0.075,
+  gridOpacity: 0.045,
   gridSoft: "#182438",
-  gridSoftOpacity: 0.045,
+  gridSoftOpacity: 0.025,
   rim: [148 / 255, 163 / 255, 184 / 255],
   rimStrong: [96 / 255, 165 / 255, 250 / 255],
   rimHighlight: [1, 1, 1],
