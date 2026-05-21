@@ -386,6 +386,13 @@ body {
   pointer-events: auto;
 }
 
+.globe-control-panel.is-collapsed {
+  width: auto;
+  gap: 0;
+  padding: 0.42rem;
+  border-radius: 8px;
+}
+
 .control-panel-header,
 .control-panel-actions,
 .control-section-title,
@@ -737,6 +744,11 @@ body {
     gap: 0.48rem;
     padding: 0.58rem;
     border-radius: 8px;
+  }
+
+  .globe-control-panel.is-collapsed {
+    width: auto;
+    padding: 0.36rem;
   }
 
   .control-panel-header h2 {

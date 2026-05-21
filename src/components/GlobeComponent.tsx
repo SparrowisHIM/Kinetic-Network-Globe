@@ -1606,9 +1606,13 @@ function ControlRange({
 function GlobeControlPanel({
   controls,
   onControlsChange,
+  isOpen,
+  onOpenChange,
 }: {
   controls: GlobeControlsState;
   onControlsChange: (controls: GlobeControlsState) => void;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 }) {
   const updateControl = useCallback(
     <Key extends keyof GlobeControlsState>(key: Key, value: GlobeControlsState[Key]) => {
@@ -1623,11 +1627,33 @@ function GlobeControlPanel({
     void navigator.clipboard?.writeText(serializedControls);
   }, [controls]);
 
+  if (!isOpen) {
+    return (
+      <aside className="globe-control-panel is-collapsed" aria-label="Globe display controls">
+        <button
+          className="control-icon-button"
+          type="button"
+          aria-label="Open globe controls"
+          aria-expanded={false}
+          onClick={() => onOpenChange(true)}
+        >
+          <span />
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside className="globe-control-panel" aria-label="Globe display controls">
       <header className="control-panel-header">
         <h2>Controls</h2>
-        <button className="control-icon-button" type="button" aria-label="Panel settings">
+        <button
+          className="control-icon-button"
+          type="button"
+          aria-label="Close globe controls"
+          aria-expanded={true}
+          onClick={() => onOpenChange(false)}
+        >
           <span />
         </button>
       </header>
@@ -1988,6 +2014,7 @@ export function GlobeComponent({ theme }: GlobeComponentProps = {}) {
   const [isDragging, setIsDragging] = useState(false);
   const [interactionState, setInteractionState] = useState<InteractionState>("idle");
   const [controls, setControls] = useState<GlobeControlsState>(DEFAULT_GLOBE_CONTROLS);
+  const [isControlPanelOpen, setIsControlPanelOpen] = useState(true);
   const activeTheme = theme ?? controls.theme;
   const activeControls = useMemo<GlobeControlsState>(
     () => ({
@@ -2003,6 +2030,10 @@ export function GlobeComponent({ theme }: GlobeComponentProps = {}) {
     [isCompactViewport, prefersReducedMotion],
   );
 
+  useEffect(() => {
+    setIsControlPanelOpen(!isCompactViewport);
+  }, [isCompactViewport]);
+
   return (
     <section
       className={`globe-section theme-${activeTheme} is-${interactionState}${isDragging ? " is-dragging" : ""}${
@@ -2012,7 +2043,12 @@ export function GlobeComponent({ theme }: GlobeComponentProps = {}) {
       aria-label="Interactive dotted Earth globe"
     >
       <div className="globe-ambient" aria-hidden="true" />
-      <GlobeControlPanel controls={activeControls} onControlsChange={setControls} />
+      <GlobeControlPanel
+        controls={activeControls}
+        onControlsChange={setControls}
+        isOpen={isControlPanelOpen}
+        onOpenChange={setIsControlPanelOpen}
+      />
       <div className="globe-stage">
         <Canvas
           className="globe-canvas"
