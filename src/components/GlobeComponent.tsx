@@ -34,7 +34,7 @@ const DOT_SPACING = 0.72;
 const DOT_JITTER = DOT_SPACING * 0.09;
 const DOT_SIZE = 1.16;
 const LAND_MIN_LATITUDE = -62;
-const LAND_MAX_LATITUDE = 88;
+const LAND_MAX_LATITUDE = 84;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
 // while Africa sits slightly below visual center. Drag still returns the globe upright.
 const DEFAULT_ROTATION_X = -0.095;
