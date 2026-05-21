@@ -834,11 +834,11 @@ function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
               void main() {
                 vec2 centeredUv = vUv - vec2(0.5);
                 float distanceFromCenter = length(centeredUv) * 2.0;
-                float bodyTint = smoothstep(0.0, 0.94, distanceFromCenter) * 0.022;
-                float innerGlass = smoothstep(0.74, 0.98, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.055, distanceFromCenter));
-                float rimHighlight = smoothstep(0.91, 1.0, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.035, distanceFromCenter));
+                float bodyTint = smoothstep(0.0, 0.94, distanceFromCenter) * 0.018;
+                float innerGlass = smoothstep(0.64, 0.98, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.055, distanceFromCenter));
+                float rimHighlight = smoothstep(0.88, 1.0, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.035, distanceFromCenter));
                 float outerFade = 1.0 - smoothstep(0.995, 1.04, distanceFromCenter);
-                float alpha = (bodyTint + innerGlass * 0.12 + rimHighlight * 0.24) * outerFade;
+                float alpha = (bodyTint + innerGlass * 0.15 + rimHighlight * 0.32) * outerFade;
                 vec3 color = mix(vec3(0.72, 0.8, 0.9), vec3(1.0), rimHighlight * 0.72);
 
                 if (distanceFromCenter > 1.04 || alpha < 0.002) discard;
@@ -853,7 +853,7 @@ function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
         <meshBasicMaterial
           color={isLightTheme ? "#d8e3ef" : "#2a9fff"}
           transparent
-          opacity={isLightTheme ? 0.16 : 0.14}
+          opacity={isLightTheme ? 0.12 : 0.14}
           depthTest={false}
           depthWrite={false}
           blending={isLightTheme ? NormalBlending : AdditiveBlending}
