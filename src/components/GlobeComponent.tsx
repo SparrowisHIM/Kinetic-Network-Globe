@@ -63,6 +63,7 @@ const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
 const GLOBE_RADIUS = 2.4;
+const GLOBE_VISUAL_RIM_RADIUS = GLOBE_RADIUS * 1.058;
 const LAND_DOT_POINT_SIZE = DOT_SIZE;
 const INTERACTION_ENERGY_EASING = 5.8;
 const REDUCED_MOTION_IDLE_SPEED = 0.008;
@@ -804,11 +805,49 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
 
 function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
   const isLightTheme = theme === "light";
-  const mainInnerRadius = GLOBE_RADIUS * (isLightTheme ? 0.91 : 1.004);
-  const mainOuterRadius = GLOBE_RADIUS * (isLightTheme ? 1.062 : 1.057);
+  const mainInnerRadius = GLOBE_RADIUS * (isLightTheme ? 0.925 : 1.004);
+  const mainOuterRadius = GLOBE_VISUAL_RIM_RADIUS;
 
   return (
     <group name="viewport-rim-polish" renderOrder={20}>
+      {isLightTheme ? (
+        <mesh>
+          <circleGeometry args={[GLOBE_VISUAL_RIM_RADIUS, 256]} />
+          <shaderMaterial
+            transparent
+            depthTest={false}
+            depthWrite={false}
+            blending={NormalBlending}
+            vertexShader={`
+              varying vec2 vUv;
+
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `}
+            fragmentShader={`
+              precision highp float;
+
+              varying vec2 vUv;
+
+              void main() {
+                vec2 centeredUv = vUv - vec2(0.5);
+                float distanceFromCenter = length(centeredUv) * 2.0;
+                float bodyTint = smoothstep(0.0, 0.94, distanceFromCenter) * 0.022;
+                float innerGlass = smoothstep(0.74, 0.98, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.055, distanceFromCenter));
+                float rimHighlight = smoothstep(0.91, 1.0, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.035, distanceFromCenter));
+                float outerFade = 1.0 - smoothstep(0.995, 1.04, distanceFromCenter);
+                float alpha = (bodyTint + innerGlass * 0.12 + rimHighlight * 0.24) * outerFade;
+                vec3 color = mix(vec3(0.72, 0.8, 0.9), vec3(1.0), rimHighlight * 0.72);
+
+                if (distanceFromCenter > 1.04 || alpha < 0.002) discard;
+                gl_FragColor = vec4(color, alpha);
+              }
+            `}
+          />
+        </mesh>
+      ) : null}
       <mesh>
         <ringGeometry args={[mainInnerRadius, mainOuterRadius, 256]} />
         <meshBasicMaterial
@@ -821,7 +860,7 @@ function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
         />
       </mesh>
       <mesh>
-        <ringGeometry args={[GLOBE_RADIUS * 1.052, GLOBE_RADIUS * 1.074, 256]} />
+        <ringGeometry args={[GLOBE_RADIUS * 1.048, GLOBE_VISUAL_RIM_RADIUS, 256]} />
         <meshBasicMaterial
           color={isLightTheme ? "#ffffff" : "#7fdcff"}
           transparent
