@@ -804,7 +804,7 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
 
 function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
   const isLightTheme = theme === "light";
-  const mainInnerRadius = GLOBE_RADIUS * (isLightTheme ? 0.952 : 1.004);
+  const mainInnerRadius = GLOBE_RADIUS * (isLightTheme ? 0.91 : 1.004);
   const mainOuterRadius = GLOBE_RADIUS * (isLightTheme ? 1.062 : 1.057);
 
   return (
@@ -814,7 +814,7 @@ function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
         <meshBasicMaterial
           color={isLightTheme ? "#d8e3ef" : "#2a9fff"}
           transparent
-          opacity={isLightTheme ? 0.18 : 0.14}
+          opacity={isLightTheme ? 0.16 : 0.14}
           depthTest={false}
           depthWrite={false}
           blending={isLightTheme ? NormalBlending : AdditiveBlending}
