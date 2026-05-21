@@ -342,6 +342,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function wrapLongitude(longitude: number) {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
 function dampVelocity(velocity: number, friction: number, delta: number) {
   return velocity * Math.pow(friction, delta * 60);
 }
@@ -686,10 +690,13 @@ function createLightDenseLandPoints(landPoints: LandPoint[]) {
     const latitudeScale = Math.max(0.45, Math.cos((point.lat * Math.PI) / 180));
     const lonOffset = (index % 2 === 0 ? 0.22 : -0.22) / latitudeScale;
     const latOffset = index % 3 === 0 ? 0.16 : -0.13;
+    const denseLatitude = point.lat + latOffset;
+
+    if (denseLatitude < LAND_MIN_LATITUDE || denseLatitude > LAND_MAX_LATITUDE) return;
 
     densePoints.push({
-      lon: clamp(point.lon + lonOffset, -180, 180),
-      lat: clamp(point.lat + latOffset, LAND_MIN_LATITUDE, LAND_MAX_LATITUDE),
+      lon: wrapLongitude(point.lon + lonOffset),
+      lat: denseLatitude,
     });
   });
 
