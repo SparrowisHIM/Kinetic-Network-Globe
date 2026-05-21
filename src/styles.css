@@ -40,7 +40,7 @@ body {
 }
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(circle at 50% 45%, rgba(50, 145, 255, 0.2), transparent 25rem),
     radial-gradient(circle at 50% 48%, rgba(14, 48, 118, 0.36), transparent 40rem),
@@ -51,7 +51,7 @@ body {
 .globe-section {
   position: relative;
   display: grid;
-  min-height: 100svh;
+  min-height: 100dvh;
   place-items: center;
   overflow: hidden;
   padding: clamp(1.4rem, 4vw, 4.5rem);
@@ -694,7 +694,7 @@ body {
 
 @media (max-width: 1024px) {
   .globe-section {
-    min-height: 94svh;
+    min-height: 100dvh;
     padding: clamp(1.25rem, 3.5vw, 2.25rem);
   }
 
@@ -732,7 +732,7 @@ body {
 
 @media (max-width: 640px) {
   .globe-section {
-    min-height: 100svh;
+    min-height: 100dvh;
     padding: 1rem;
     align-content: center;
   }
