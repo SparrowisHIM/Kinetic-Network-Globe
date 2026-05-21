@@ -795,6 +795,37 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
   );
 }
 
+function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
+  const isLightTheme = theme === "light";
+
+  return (
+    <group name="viewport-rim-polish" renderOrder={20}>
+      <mesh>
+        <ringGeometry args={[GLOBE_RADIUS * 1.004, GLOBE_RADIUS * 1.057, 256]} />
+        <meshBasicMaterial
+          color={isLightTheme ? "#d8e3ef" : "#2a9fff"}
+          transparent
+          opacity={isLightTheme ? 0.22 : 0.14}
+          depthTest={false}
+          depthWrite={false}
+          blending={isLightTheme ? NormalBlending : AdditiveBlending}
+        />
+      </mesh>
+      <mesh>
+        <ringGeometry args={[GLOBE_RADIUS * 1.052, GLOBE_RADIUS * 1.074, 256]} />
+        <meshBasicMaterial
+          color={isLightTheme ? "#ffffff" : "#7fdcff"}
+          transparent
+          opacity={isLightTheme ? 0.2 : 0.12}
+          depthTest={false}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function GlassyOceanIllumination({ theme }: { theme: GlobeTheme }) {
   const palette = GLOBE_THEME_PALETTES[theme];
   const uniforms = useMemo(
@@ -2005,6 +2036,7 @@ function GlobeScene({
         isCompactViewport={isCompactViewport}
         controls={controls}
       />
+      <ViewportRimPolish theme={controls.theme} />
       <DebugCenteringGuides />
     </>
   );
