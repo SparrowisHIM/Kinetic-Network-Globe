@@ -1031,6 +1031,7 @@ function DigitalGlobeSurface({
     varying float vViewFacing;
     varying float vEdgeFade;
     varying float vNorthLight;
+    varying float vPolarFade;
     varying float vSeed;
 
     void main() {
@@ -1042,6 +1043,7 @@ function DigitalGlobeSurface({
       vViewFacing = viewNormal.z;
       vEdgeFade = smoothstep(-0.28, 0.04, viewNormal.z);
       vNorthLight = smoothstep(0.02, 0.78, sphereNormal.y);
+      vPolarFade = 1.0 - smoothstep(0.964, 0.992, abs(sphereNormal.y));
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
@@ -1061,6 +1063,7 @@ function DigitalGlobeSurface({
     varying float vViewFacing;
     varying float vEdgeFade;
     varying float vNorthLight;
+    varying float vPolarFade;
     varying float vSeed;
 
     void main() {
@@ -1077,8 +1080,8 @@ function DigitalGlobeSurface({
       float lightDotOpacity = mix(0.24, 0.76, lightDepth);
       lightDotOpacity = mix(0.24, lightDotOpacity, lightBackPresence);
       float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.16;
-      float lightThemeAlpha = dotMask * lightDotOpacity * mix(0.96, 1.0, vSeed) * lightIntensityLift;
-      float darkThemeAlpha = dotMask * vEdgeFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
+      float lightThemeAlpha = dotMask * lightDotOpacity * vPolarFade * mix(0.96, 1.0, vSeed) * lightIntensityLift;
+      float darkThemeAlpha = dotMask * vEdgeFade * vPolarFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
       vec3 edgeColor = uInnerColor * 0.98;
       vec3 lightThemeColor = mix(edgeColor * 0.82, uOuterColor * 0.92, core * 0.08 + lightDepth * 0.04);
       vec3 darkThemeColor = mix(edgeColor, mix(uInnerColor, uOuterColor, core * 0.9 + frontLight * 0.48 + topLandLift) * mix(0.82, 3.2, clamp(log2(max(uIntensity, 1.0)) / 6.4, 0.0, 1.0)), frontLight);
