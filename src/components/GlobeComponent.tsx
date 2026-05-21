@@ -34,7 +34,7 @@ const DOT_SPACING = 0.72;
 const DOT_JITTER = DOT_SPACING * 0.09;
 const DOT_SIZE = 1.16;
 const LAND_MIN_LATITUDE = -62;
-const LAND_MAX_LATITUDE = 84;
+const LAND_MAX_LATITUDE = 88;
 // A tiny presentation pitch matches the reference framing: northern land stays readable
 // while Africa sits slightly below visual center. Drag still returns the globe upright.
 const DEFAULT_ROTATION_X = -0.095;
@@ -63,7 +63,6 @@ const MAX_POINTER_DELTA = 80;
 const MIN_POINTER_DELTA_TIME = 16;
 const MAX_POINTER_DELTA_TIME = 80;
 const GLOBE_RADIUS = 2.4;
-const GLOBE_VISUAL_RIM_RADIUS = GLOBE_RADIUS * 1.058;
 const LAND_DOT_POINT_SIZE = DOT_SIZE;
 const INTERACTION_ENERGY_EASING = 5.8;
 const REDUCED_MOTION_IDLE_SPEED = 0.008;
@@ -804,67 +803,27 @@ function RimAtmosphere({ theme }: { theme: GlobeTheme }) {
 }
 
 function ViewportRimPolish({ theme }: { theme: GlobeTheme }) {
-  const isLightTheme = theme === "light";
-  const mainInnerRadius = GLOBE_RADIUS * (isLightTheme ? 0.925 : 1.004);
-  const mainOuterRadius = GLOBE_VISUAL_RIM_RADIUS;
+  if (theme === "light") return null;
 
   return (
     <group name="viewport-rim-polish" renderOrder={20}>
-      {isLightTheme ? (
-        <mesh>
-          <circleGeometry args={[GLOBE_VISUAL_RIM_RADIUS, 256]} />
-          <shaderMaterial
-            transparent
-            depthTest={false}
-            depthWrite={false}
-            blending={NormalBlending}
-            vertexShader={`
-              varying vec2 vUv;
-
-              void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-              }
-            `}
-            fragmentShader={`
-              precision highp float;
-
-              varying vec2 vUv;
-
-              void main() {
-                vec2 centeredUv = vUv - vec2(0.5);
-                float distanceFromCenter = length(centeredUv) * 2.0;
-                float bodyTint = smoothstep(0.0, 0.94, distanceFromCenter) * 0.018;
-                float innerGlass = smoothstep(0.64, 0.98, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.055, distanceFromCenter));
-                float rimHighlight = smoothstep(0.88, 1.0, distanceFromCenter) * (1.0 - smoothstep(1.0, 1.035, distanceFromCenter));
-                float outerFade = 1.0 - smoothstep(0.995, 1.04, distanceFromCenter);
-                float alpha = (bodyTint + innerGlass * 0.15 + rimHighlight * 0.32) * outerFade;
-                vec3 color = mix(vec3(0.72, 0.8, 0.9), vec3(1.0), rimHighlight * 0.72);
-
-                if (distanceFromCenter > 1.04 || alpha < 0.002) discard;
-                gl_FragColor = vec4(color, alpha);
-              }
-            `}
-          />
-        </mesh>
-      ) : null}
       <mesh>
-        <ringGeometry args={[mainInnerRadius, mainOuterRadius, 256]} />
+        <ringGeometry args={[GLOBE_RADIUS * 1.004, GLOBE_RADIUS * 1.057, 256]} />
         <meshBasicMaterial
-          color={isLightTheme ? "#d8e3ef" : "#2a9fff"}
+          color="#2a9fff"
           transparent
-          opacity={isLightTheme ? 0.12 : 0.14}
+          opacity={0.14}
           depthTest={false}
           depthWrite={false}
-          blending={isLightTheme ? NormalBlending : AdditiveBlending}
+          blending={AdditiveBlending}
         />
       </mesh>
       <mesh>
-        <ringGeometry args={[GLOBE_RADIUS * 1.048, GLOBE_VISUAL_RIM_RADIUS, 256]} />
+        <ringGeometry args={[GLOBE_RADIUS * 1.044, GLOBE_RADIUS * 1.057, 256]} />
         <meshBasicMaterial
-          color={isLightTheme ? "#ffffff" : "#7fdcff"}
+          color="#7fdcff"
           transparent
-          opacity={isLightTheme ? 0.2 : 0.12}
+          opacity={0.12}
           depthTest={false}
           depthWrite={false}
           blending={AdditiveBlending}
@@ -969,17 +928,82 @@ function LightGlobeBodySurface() {
           void main() {
             vec3 upperLightDirection = normalize(vec3(-0.5, 0.74, 0.5));
             vec3 lowerDepthDirection = normalize(vec3(0.46, -0.78, 0.48));
-            float upperLight = smoothstep(-0.24, 1.0, dot(vSphereNormal, upperLightDirection));
-            float lowerDepth = smoothstep(-0.2, 1.0, dot(vSphereNormal, lowerDepthDirection));
-            float rimDepth = pow(1.0 - vFacing, 1.22);
+            float upperLight = smoothstep(-0.32, 1.0, dot(vSphereNormal, upperLightDirection));
+            float lowerDepth = smoothstep(-0.18, 1.0, dot(vSphereNormal, lowerDepthDirection));
+            float rimDepth = pow(1.0 - vFacing, 1.45);
             float glassCenter = smoothstep(0.05, 1.0, vFacing);
 
-            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.44 + glassCenter * 0.2);
-            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.5) * 0.5 + glassCenter * 0.06);
-            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.12 + rimDepth * 0.1);
-            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 2.45) * 0.2);
+            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.34 + glassCenter * 0.32);
+            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.35) * 0.62 + glassCenter * 0.16);
+            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.07 + rimDepth * 0.055);
+            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 2.1) * 0.22 + glassCenter * 0.08);
 
             gl_FragColor = vec4(frostedColor, 1.0);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
+function LightReferenceGlassShell() {
+  const uniforms = useMemo(
+    () => ({
+      uAtmosphere: { value: LIGHT_GLOBE_TOKENS.atmosphere },
+      uRim: { value: LIGHT_GLOBE_TOKENS.rim },
+      uRimStrong: { value: LIGHT_GLOBE_TOKENS.rimStrong },
+      uHighlight: { value: LIGHT_GLOBE_TOKENS.rimHighlight },
+    }),
+    [],
+  );
+
+  return (
+    <mesh renderOrder={12}>
+      <sphereGeometry args={[GLOBE_RADIUS * 1.048, GLOBE_SPHERE_SEGMENTS, GLOBE_SPHERE_SEGMENTS]} />
+      <shaderMaterial
+        transparent
+        depthTest={false}
+        depthWrite={false}
+        blending={NormalBlending}
+        uniforms={uniforms}
+        vertexShader={`
+          varying float vFacing;
+          varying float vRim;
+          varying float vUpper;
+
+          void main() {
+            vec3 sphereNormal = normalize(position);
+            vec3 viewNormal = normalize(normalMatrix * sphereNormal);
+            vFacing = clamp(viewNormal.z, 0.0, 1.0);
+            vRim = 1.0 - abs(viewNormal.z);
+            vUpper = smoothstep(-0.2, 0.92, sphereNormal.y);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          precision highp float;
+
+          uniform vec3 uAtmosphere;
+          uniform vec3 uRim;
+          uniform vec3 uRimStrong;
+          uniform vec3 uHighlight;
+          varying float vFacing;
+          varying float vRim;
+          varying float vUpper;
+
+          void main() {
+            float rim = smoothstep(0.22, 1.0, vRim);
+            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.03;
+            float softEdge = pow(rim, 1.42) * 0.2;
+            float brightEdge = pow(rim, 4.1) * 0.34;
+            float upperGlint = pow(rim, 2.6) * vUpper * 0.18;
+            vec3 color = uAtmosphere * glassBody;
+            color += uRim * softEdge;
+            color += uRimStrong * upperGlint;
+            color += uHighlight * brightEdge;
+            float alpha = clamp(glassBody + softEdge * 0.72 + brightEdge * 0.58 + upperGlint * 0.36, 0.0, 0.46);
+
+            gl_FragColor = vec4(color, alpha);
           }
         `}
       />
@@ -1124,6 +1148,8 @@ function DigitalGlobeSurface({
         <sphereGeometry args={[GLOBE_RADIUS * 1.01, GLOBE_DETAIL_SEGMENTS, GLOBE_DETAIL_SEGMENTS]} />
         <meshBasicMaterial color={palette.oceanVeil} transparent opacity={palette.oceanVeilOpacity} depthWrite={false} />
       </mesh>
+
+      {theme === "light" ? <LightReferenceGlassShell /> : null}
 
       <RimAtmosphere theme={theme} />
     </group>
