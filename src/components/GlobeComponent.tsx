@@ -212,11 +212,11 @@ const LIGHT_GLOBE_TOKENS = {
   pageBgMid: "#f7fbff",
   pageBgEnd: "#edf4fb",
   surfaceTop: "#ffffff",
-  surfaceMid: "#edf4fb",
-  surfaceBottom: "#d2dde9",
+  surfaceMid: "#e5edf6",
+  surfaceBottom: "#c5d1df",
   surfaceTopColor: [255 / 255, 255 / 255, 255 / 255],
-  surfaceMidColor: [237 / 255, 244 / 255, 251 / 255],
-  surfaceBottomColor: [210 / 255, 221 / 255, 233 / 255],
+  surfaceMidColor: [229 / 255, 237 / 255, 246 / 255],
+  surfaceBottomColor: [197 / 255, 209 / 255, 223 / 255],
   innerShadowColor: [15 / 255, 23 / 255, 42 / 255],
   innerHighlightColor: [1, 1, 1],
   innerShadow: "rgba(15, 23, 42, 0.10)",
@@ -934,9 +934,9 @@ function LightGlobeBodySurface() {
             float glassCenter = smoothstep(0.05, 1.0, vFacing);
 
             vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.24 + glassCenter * 0.38);
-            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.22) * 0.68 + glassCenter * 0.24);
+            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.22) * 0.5 + glassCenter * 0.14);
             frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.035 + rimDepth * 0.028);
-            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 1.85) * 0.25 + glassCenter * 0.12);
+            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 1.85) * 0.16 + glassCenter * 0.06);
 
             gl_FragColor = vec4(frostedColor, 1.0);
           }
@@ -1039,7 +1039,7 @@ function LightReferenceGlassAperture({ theme }: { theme: GlobeTheme }) {
             vec2 centeredUv = vUv - vec2(0.5);
             float radius = length(centeredUv) * 2.0;
             float inside = 1.0 - smoothstep(1.0, 1.012, radius);
-            float centerWash = smoothstep(0.0, 0.84, radius) * 0.034;
+            float centerWash = smoothstep(0.0, 0.84, radius) * 0.024;
             float innerFrost = smoothstep(0.68, 0.97, radius) * (1.0 - smoothstep(0.998, 1.012, radius));
             float glassLip = smoothstep(0.91, 0.992, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
             float highlight = smoothstep(0.958, 0.997, radius) * (1.0 - smoothstep(0.998, 1.009, radius));
