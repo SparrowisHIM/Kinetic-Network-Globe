@@ -1011,6 +1011,50 @@ function LightReferenceGlassShell() {
   );
 }
 
+function LightReferenceGlassAperture({ theme }: { theme: GlobeTheme }) {
+  if (theme !== "light") return null;
+
+  return (
+    <mesh name="light-reference-glass-aperture" renderOrder={36}>
+      <circleGeometry args={[GLOBE_RADIUS * 1.056, 384]} />
+      <shaderMaterial
+        transparent
+        depthTest={false}
+        depthWrite={false}
+        blending={NormalBlending}
+        vertexShader={`
+          varying vec2 vUv;
+
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          precision highp float;
+
+          varying vec2 vUv;
+
+          void main() {
+            vec2 centeredUv = vUv - vec2(0.5);
+            float radius = length(centeredUv) * 2.0;
+            float inside = 1.0 - smoothstep(1.0, 1.018, radius);
+            float centerWash = smoothstep(0.0, 0.84, radius) * 0.035;
+            float innerFrost = smoothstep(0.64, 0.98, radius) * (1.0 - smoothstep(1.0, 1.018, radius));
+            float glassLip = smoothstep(0.9, 1.0, radius) * (1.0 - smoothstep(1.0, 1.018, radius));
+            float highlight = smoothstep(0.955, 1.0, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
+            vec3 frost = mix(vec3(0.82, 0.88, 0.95), vec3(1.0), highlight * 0.74);
+            float alpha = (centerWash + innerFrost * 0.1 + glassLip * 0.18 + highlight * 0.24) * inside;
+
+            if (alpha < 0.002) discard;
+            gl_FragColor = vec4(frost, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 function DigitalGlobeSurface({
   theme,
   continentIntensity,
@@ -2113,6 +2157,7 @@ function GlobeScene({
         isCompactViewport={isCompactViewport}
         controls={controls}
       />
+      <LightReferenceGlassAperture theme={controls.theme} />
       <ViewportRimPolish theme={controls.theme} />
       <DebugCenteringGuides />
     </>
