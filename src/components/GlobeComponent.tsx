@@ -212,24 +212,24 @@ const LIGHT_GLOBE_TOKENS = {
   pageBgMid: "#f7fbff",
   pageBgEnd: "#edf4fb",
   surfaceTop: "#ffffff",
-  surfaceMid: "#e2e9f1",
-  surfaceBottom: "#b9c6d7",
+  surfaceMid: "#edf4fb",
+  surfaceBottom: "#d2dde9",
   surfaceTopColor: [255 / 255, 255 / 255, 255 / 255],
-  surfaceMidColor: [226 / 255, 233 / 255, 241 / 255],
-  surfaceBottomColor: [185 / 255, 198 / 255, 215 / 255],
+  surfaceMidColor: [237 / 255, 244 / 255, 251 / 255],
+  surfaceBottomColor: [210 / 255, 221 / 255, 233 / 255],
   innerShadowColor: [15 / 255, 23 / 255, 42 / 255],
   innerHighlightColor: [1, 1, 1],
   innerShadow: "rgba(15, 23, 42, 0.10)",
   innerDepth: "rgba(15, 23, 42, 0.16)",
-  landDotFront: [15 / 255, 23 / 255, 42 / 255],
-  landDotMid: [15 / 255, 23 / 255, 42 / 255],
-  landDotBack: [15 / 255, 23 / 255, 42 / 255],
+  landDotFront: [35 / 255, 48 / 255, 68 / 255],
+  landDotMid: [45 / 255, 61 / 255, 83 / 255],
+  landDotBack: [74 / 255, 91 / 255, 116 / 255],
   grid: "#182438",
   gridOpacity: 0.045,
   gridSoft: "#182438",
   gridSoftOpacity: 0.025,
-  rim: [148 / 255, 163 / 255, 184 / 255],
-  rimStrong: [96 / 255, 165 / 255, 250 / 255],
+  rim: [205 / 255, 218 / 255, 232 / 255],
+  rimStrong: [159 / 255, 207 / 255, 255 / 255],
   rimHighlight: [1, 1, 1],
   rimHighlightOpacity: 0.78,
   atmosphere: [147 / 255, 197 / 255, 253 / 255],
@@ -295,12 +295,12 @@ const GLOBE_THEME_PALETTES = {
   light: {
     oceanCore: LIGHT_GLOBE_TOKENS.surfaceMid,
     oceanVeil: LIGHT_GLOBE_TOKENS.surfaceTop,
-    oceanVeilOpacity: 0.18,
-    oceanBase: [0.76, 0.82, 0.9],
-    oceanGlow: [0.66, 0.76, 0.88],
+    oceanVeilOpacity: 0.11,
+    oceanBase: [0.86, 0.91, 0.96],
+    oceanGlow: [0.82, 0.9, 1],
     rimGlow: LIGHT_GLOBE_TOKENS.rimStrong,
     rimSoft: LIGHT_GLOBE_TOKENS.rim,
-    rimIntensity: 2.28,
+    rimIntensity: 1.26,
     landInner: LIGHT_GLOBE_TOKENS.landDotMid,
     landOuter: LIGHT_GLOBE_TOKENS.landDotFront,
   },
@@ -926,17 +926,17 @@ function LightGlobeBodySurface() {
           varying float vFacing;
 
           void main() {
-            vec3 upperLightDirection = normalize(vec3(-0.5, 0.74, 0.5));
+            vec3 upperLightDirection = normalize(vec3(-0.56, 0.76, 0.42));
             vec3 lowerDepthDirection = normalize(vec3(0.46, -0.78, 0.48));
             float upperLight = smoothstep(-0.32, 1.0, dot(vSphereNormal, upperLightDirection));
             float lowerDepth = smoothstep(-0.18, 1.0, dot(vSphereNormal, lowerDepthDirection));
-            float rimDepth = pow(1.0 - vFacing, 1.45);
+            float rimDepth = pow(1.0 - vFacing, 1.72);
             float glassCenter = smoothstep(0.05, 1.0, vFacing);
 
-            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.34 + glassCenter * 0.32);
-            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.35) * 0.62 + glassCenter * 0.16);
-            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.07 + rimDepth * 0.055);
-            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 2.1) * 0.22 + glassCenter * 0.08);
+            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.24 + glassCenter * 0.38);
+            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.22) * 0.68 + glassCenter * 0.24);
+            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.035 + rimDepth * 0.028);
+            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 1.85) * 0.25 + glassCenter * 0.12);
 
             gl_FragColor = vec4(frostedColor, 1.0);
           }
@@ -993,15 +993,15 @@ function LightReferenceGlassShell() {
 
           void main() {
             float rim = smoothstep(0.22, 1.0, vRim);
-            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.01;
-            float softEdge = pow(rim, 1.32) * 0.16;
-            float brightEdge = pow(rim, 3.7) * 0.24;
-            float upperGlint = pow(rim, 2.4) * vUpper * 0.12;
+            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.006;
+            float softEdge = pow(rim, 1.58) * 0.08;
+            float brightEdge = pow(rim, 4.4) * 0.13;
+            float upperGlint = pow(rim, 3.0) * vUpper * 0.08;
             vec3 color = uAtmosphere * glassBody;
             color += uRim * softEdge;
             color += uRimStrong * upperGlint;
             color += uHighlight * brightEdge;
-            float alpha = clamp(glassBody + softEdge * 0.58 + brightEdge * 0.4 + upperGlint * 0.28, 0.0, 0.28);
+            float alpha = clamp(glassBody + softEdge * 0.4 + brightEdge * 0.28 + upperGlint * 0.2, 0.0, 0.14);
 
             gl_FragColor = vec4(color, alpha);
           }
@@ -1039,12 +1039,12 @@ function LightReferenceGlassAperture({ theme }: { theme: GlobeTheme }) {
             vec2 centeredUv = vUv - vec2(0.5);
             float radius = length(centeredUv) * 2.0;
             float inside = 1.0 - smoothstep(1.0, 1.012, radius);
-            float centerWash = smoothstep(0.0, 0.84, radius) * 0.046;
-            float innerFrost = smoothstep(0.62, 0.965, radius) * (1.0 - smoothstep(0.998, 1.012, radius));
-            float glassLip = smoothstep(0.86, 0.992, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
-            float highlight = smoothstep(0.936, 0.997, radius) * (1.0 - smoothstep(0.998, 1.009, radius));
-            vec3 frost = mix(vec3(0.86, 0.91, 0.97), vec3(1.0), highlight * 0.82);
-            float alpha = (centerWash + innerFrost * 0.2 + glassLip * 0.52 + highlight * 0.52) * inside;
+            float centerWash = smoothstep(0.0, 0.84, radius) * 0.034;
+            float innerFrost = smoothstep(0.68, 0.97, radius) * (1.0 - smoothstep(0.998, 1.012, radius));
+            float glassLip = smoothstep(0.91, 0.992, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
+            float highlight = smoothstep(0.958, 0.997, radius) * (1.0 - smoothstep(0.998, 1.009, radius));
+            vec3 frost = mix(vec3(0.9, 0.94, 0.985), vec3(1.0), highlight * 0.9);
+            float alpha = (centerWash + innerFrost * 0.1 + glassLip * 0.24 + highlight * 0.42) * inside;
 
             if (alpha < 0.002) discard;
             gl_FragColor = vec4(frost, alpha);
@@ -1145,8 +1145,8 @@ function DigitalGlobeSurface({
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
       float lightDepth = smoothstep(-0.24, 0.68, vViewFacing);
       float lightBackPresence = smoothstep(-0.58, -0.18, vViewFacing);
-      float lightDotOpacity = mix(0.24, 0.76, lightDepth);
-      lightDotOpacity = mix(0.24, lightDotOpacity, lightBackPresence);
+      float lightDotOpacity = mix(0.14, 0.5, lightDepth);
+      lightDotOpacity = mix(0.1, lightDotOpacity, lightBackPresence);
       float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.16;
       float lightThemeAlpha = dotMask * lightDotOpacity * vPolarFade * mix(0.96, 1.0, vSeed) * lightIntensityLift;
       float darkThemeAlpha = dotMask * vEdgeFade * vPolarFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
