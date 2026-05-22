@@ -86,7 +86,7 @@ const LIGHT_ROUTE_PULSE_OPACITY = 0.52;
 const LIGHT_ROUTE_GLOW_ALPHA_BY_TONE = {
   cyan: 0.08,
   purple: 0.06,
-  pink: 0.035,
+  pink: 0.012,
   gold: 0.06,
 } as const;
 const ROUTE_HORIZON_FADE_START = -0.08;
@@ -1286,7 +1286,7 @@ function NetworkRouteArc({
   );
   const routeCoreOpacity = isLightTheme ? LIGHT_ROUTE_CORE_OPACITY : ROUTE_CORE_OPACITY;
   const routeGlowOpacity = isLightTheme ? LIGHT_ROUTE_GLOW_ALPHA_BY_TONE[lightRouteTone] : ROUTE_GLOW_OPACITY;
-  const lightToneOpacityScale = lightRouteTone === "pink" ? 0.42 : 1;
+  const lightToneOpacityScale = lightRouteTone === "pink" ? 0.18 : 1;
   const cameraDirectionRef = useRef(new Vector3());
   const visibilitySamples = useMemo(
     () => [0.14, 0.32, 0.5, 0.68, 0.86].map((progress) => curve.getPointAt(progress)),
