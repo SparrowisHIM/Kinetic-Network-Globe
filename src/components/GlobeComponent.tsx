@@ -81,13 +81,13 @@ const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
 const ROUTE_CORE_OPACITY = 0.54;
 const ROUTE_GLOW_OPACITY = 0.06;
-const LIGHT_ROUTE_CORE_OPACITY = 0.32;
-const LIGHT_ROUTE_PULSE_OPACITY = 0.38;
+const LIGHT_ROUTE_CORE_OPACITY = 0.86;
+const LIGHT_ROUTE_PULSE_OPACITY = 0.62;
 const LIGHT_ROUTE_GLOW_ALPHA_BY_TONE = {
-  cyan: 0.045,
-  purple: 0.034,
-  pink: 0.012,
-  gold: 0.036,
+  cyan: 0.14,
+  purple: 0.12,
+  pink: 0.12,
+  gold: 0.12,
 } as const;
 const ROUTE_HORIZON_FADE_START = -0.08;
 const ROUTE_HORIZON_FADE_END = 0.34;
@@ -212,36 +212,36 @@ const LIGHT_GLOBE_TOKENS = {
   pageBgMid: "#f7fbff",
   pageBgEnd: "#edf4fb",
   surfaceTop: "#ffffff",
-  surfaceMid: "#e5edf6",
-  surfaceBottom: "#c5d1df",
+  surfaceMid: "#dde5ef",
+  surfaceBottom: "#b8c6d8",
   surfaceTopColor: [255 / 255, 255 / 255, 255 / 255],
-  surfaceMidColor: [229 / 255, 237 / 255, 246 / 255],
-  surfaceBottomColor: [197 / 255, 209 / 255, 223 / 255],
+  surfaceMidColor: [221 / 255, 229 / 255, 239 / 255],
+  surfaceBottomColor: [184 / 255, 198 / 255, 216 / 255],
   innerShadowColor: [15 / 255, 23 / 255, 42 / 255],
   innerHighlightColor: [1, 1, 1],
   innerShadow: "rgba(15, 23, 42, 0.10)",
   innerDepth: "rgba(15, 23, 42, 0.16)",
-  landDotFront: [35 / 255, 48 / 255, 68 / 255],
-  landDotMid: [45 / 255, 61 / 255, 83 / 255],
-  landDotBack: [74 / 255, 91 / 255, 116 / 255],
+  landDotFront: [15 / 255, 23 / 255, 42 / 255],
+  landDotMid: [15 / 255, 23 / 255, 42 / 255],
+  landDotBack: [15 / 255, 23 / 255, 42 / 255],
   grid: "#182438",
   gridOpacity: 0.045,
   gridSoft: "#182438",
   gridSoftOpacity: 0.025,
-  rim: [205 / 255, 218 / 255, 232 / 255],
-  rimStrong: [159 / 255, 207 / 255, 255 / 255],
+  rim: [148 / 255, 163 / 255, 184 / 255],
+  rimStrong: [96 / 255, 165 / 255, 250 / 255],
   rimHighlight: [1, 1, 1],
-  rimHighlightOpacity: 0.78,
+  rimHighlightOpacity: 0.82,
   atmosphere: [147 / 255, 197 / 255, 253 / 255],
-  atmosphereOpacity: 0.16,
+  atmosphereOpacity: 0.18,
   routeCyan: "#06a6b3",
   routePurple: "#7c3aed",
   routePink: "#e11d48",
   routeGold: "#d97706",
-  markerBg: "rgba(255, 255, 255, 0.92)",
+  markerBg: "rgba(255, 255, 255, 0.94)",
   markerBorder: "rgba(255, 255, 255, 0.95)",
-  markerShadow: "0 10px 28px rgba(15, 23, 42, 0.18)",
-  markerRingShadow: "0 0 0 3px rgba(255, 255, 255, 0.84)",
+  markerShadow: "0 10px 28px rgba(15, 23, 42, 0.20)",
+  markerRingShadow: "0 0 0 3px rgba(255, 255, 255, 0.86)",
 } satisfies {
   pageBgStart: string;
   pageBgMid: string;
@@ -295,9 +295,9 @@ const GLOBE_THEME_PALETTES = {
   light: {
     oceanCore: LIGHT_GLOBE_TOKENS.surfaceMid,
     oceanVeil: LIGHT_GLOBE_TOKENS.surfaceTop,
-    oceanVeilOpacity: 0.11,
-    oceanBase: [0.86, 0.91, 0.96],
-    oceanGlow: [0.82, 0.9, 1],
+    oceanVeilOpacity: 0.08,
+    oceanBase: [0.8, 0.86, 0.93],
+    oceanGlow: [0.74, 0.84, 0.96],
     rimGlow: LIGHT_GLOBE_TOKENS.rimStrong,
     rimSoft: LIGHT_GLOBE_TOKENS.rim,
     rimIntensity: 1.26,
@@ -926,17 +926,17 @@ function LightGlobeBodySurface() {
           varying float vFacing;
 
           void main() {
-            vec3 upperLightDirection = normalize(vec3(-0.56, 0.76, 0.42));
-            vec3 lowerDepthDirection = normalize(vec3(0.46, -0.78, 0.48));
-            float upperLight = smoothstep(-0.32, 1.0, dot(vSphereNormal, upperLightDirection));
-            float lowerDepth = smoothstep(-0.18, 1.0, dot(vSphereNormal, lowerDepthDirection));
-            float rimDepth = pow(1.0 - vFacing, 1.72);
-            float glassCenter = smoothstep(0.05, 1.0, vFacing);
+            vec3 highlightCenter = normalize(vec3(-0.48, 0.6, 0.64));
+            vec3 lowerDepthDirection = normalize(vec3(0.38, -0.78, 0.5));
+            float highlight = smoothstep(0.35, 1.0, dot(vSphereNormal, highlightCenter));
+            float lowerDepth = smoothstep(-0.2, 1.0, dot(vSphereNormal, lowerDepthDirection));
+            float rimDepth = pow(1.0 - vFacing, 1.42);
+            float centerGlass = smoothstep(0.02, 1.0, vFacing);
 
-            vec3 baseColor = mix(uSurfaceBottom, uSurfaceMid, upperLight * 0.24 + glassCenter * 0.38);
-            vec3 frostedColor = mix(baseColor, uSurfaceTop, pow(upperLight, 1.22) * 0.5 + glassCenter * 0.14);
-            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.035 + rimDepth * 0.028);
-            frostedColor = mix(frostedColor, uInnerHighlight, pow(upperLight, 1.85) * 0.16 + glassCenter * 0.06);
+            vec3 frostedColor = mix(uSurfaceBottom, uSurfaceMid, highlight * 0.52 + centerGlass * 0.18);
+            frostedColor = mix(frostedColor, uSurfaceTop, highlight * 0.38);
+            frostedColor = mix(frostedColor, uInnerShadow, lowerDepth * 0.13 + rimDepth * 0.1);
+            frostedColor = mix(frostedColor, uInnerHighlight, highlight * 0.18 + centerGlass * 0.05);
 
             gl_FragColor = vec4(frostedColor, 1.0);
           }
@@ -993,15 +993,15 @@ function LightReferenceGlassShell() {
 
           void main() {
             float rim = smoothstep(0.22, 1.0, vRim);
-            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.006;
-            float softEdge = pow(rim, 1.58) * 0.08;
-            float brightEdge = pow(rim, 4.4) * 0.13;
-            float upperGlint = pow(rim, 3.0) * vUpper * 0.08;
+            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.012;
+            float softEdge = pow(rim, 1.48) * 0.12;
+            float brightEdge = pow(rim, 4.0) * 0.2;
+            float upperGlint = pow(rim, 2.8) * vUpper * 0.11;
             vec3 color = uAtmosphere * glassBody;
             color += uRim * softEdge;
             color += uRimStrong * upperGlint;
             color += uHighlight * brightEdge;
-            float alpha = clamp(glassBody + softEdge * 0.4 + brightEdge * 0.28 + upperGlint * 0.2, 0.0, 0.14);
+            float alpha = clamp(glassBody + softEdge * 0.54 + brightEdge * 0.38 + upperGlint * 0.28, 0.0, 0.22);
 
             gl_FragColor = vec4(color, alpha);
           }
@@ -1039,12 +1039,12 @@ function LightReferenceGlassAperture({ theme }: { theme: GlobeTheme }) {
             vec2 centeredUv = vUv - vec2(0.5);
             float radius = length(centeredUv) * 2.0;
             float inside = 1.0 - smoothstep(1.0, 1.012, radius);
-            float centerWash = smoothstep(0.0, 0.84, radius) * 0.024;
+            float centerWash = smoothstep(0.0, 0.84, radius) * 0.018;
             float innerFrost = smoothstep(0.68, 0.97, radius) * (1.0 - smoothstep(0.998, 1.012, radius));
             float glassLip = smoothstep(0.91, 0.992, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
             float highlight = smoothstep(0.958, 0.997, radius) * (1.0 - smoothstep(0.998, 1.009, radius));
             vec3 frost = mix(vec3(0.9, 0.94, 0.985), vec3(1.0), highlight * 0.9);
-            float alpha = (centerWash + innerFrost * 0.1 + glassLip * 0.24 + highlight * 0.42) * inside;
+            float alpha = (centerWash + innerFrost * 0.08 + glassLip * 0.2 + highlight * 0.36) * inside;
 
             if (alpha < 0.002) discard;
             gl_FragColor = vec4(frost, alpha);
@@ -1145,8 +1145,8 @@ function DigitalGlobeSurface({
       float intensityAlpha = 1.0 + log2(max(uIntensity, 1.0)) * 0.72;
       float lightDepth = smoothstep(-0.24, 0.68, vViewFacing);
       float lightBackPresence = smoothstep(-0.58, -0.18, vViewFacing);
-      float lightDotOpacity = mix(0.14, 0.5, lightDepth);
-      lightDotOpacity = mix(0.1, lightDotOpacity, lightBackPresence);
+      float lightDotOpacity = mix(0.26, 0.78, lightDepth);
+      lightDotOpacity = mix(0.26, lightDotOpacity, lightBackPresence);
       float lightIntensityLift = 1.0 + log2(max(uIntensity, 1.0)) * 0.16;
       float lightThemeAlpha = dotMask * lightDotOpacity * vPolarFade * mix(0.96, 1.0, vSeed) * lightIntensityLift;
       float darkThemeAlpha = dotMask * vEdgeFade * vPolarFade * visibleSideLight * mix(0.95, 1.0, vSeed) * intensityAlpha;
@@ -1286,7 +1286,7 @@ function NetworkRouteArc({
   );
   const routeCoreOpacity = isLightTheme ? LIGHT_ROUTE_CORE_OPACITY : ROUTE_CORE_OPACITY;
   const routeGlowOpacity = isLightTheme ? LIGHT_ROUTE_GLOW_ALPHA_BY_TONE[lightRouteTone] : ROUTE_GLOW_OPACITY;
-  const lightToneOpacityScale = lightRouteTone === "pink" ? 0.18 : 1;
+  const lightToneOpacityScale = lightRouteTone === "pink" ? 0.98 : 1;
   const cameraDirectionRef = useRef(new Vector3());
   const visibilitySamples = useMemo(
     () => [0.14, 0.32, 0.5, 0.68, 0.86].map((progress) => curve.getPointAt(progress)),
@@ -1354,7 +1354,7 @@ function NetworkRouteArc({
   return (
     <group ref={routeRef} name={`network-route-${route.id}`}>
       <mesh renderOrder={4}>
-        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, isLightTheme ? ROUTE_LINE_RADIUS * 0.82 : ROUTE_LINE_RADIUS, 8, false]} />
+        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, isLightTheme ? ROUTE_LINE_RADIUS * 0.92 : ROUTE_LINE_RADIUS, 8, false]} />
         <meshBasicMaterial
           ref={coreMaterialRef}
           color={routeColor}
@@ -1367,7 +1367,7 @@ function NetworkRouteArc({
       </mesh>
 
       <mesh renderOrder={3}>
-        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS * (isLightTheme ? 1.6 : 2.8), 8, false]} />
+        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS * (isLightTheme ? 1.8 : 2.8), 8, false]} />
         <meshBasicMaterial
           ref={glowMaterialRef}
           color={routeColor}
