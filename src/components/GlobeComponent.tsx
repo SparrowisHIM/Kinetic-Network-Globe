@@ -993,15 +993,15 @@ function LightReferenceGlassShell() {
 
           void main() {
             float rim = smoothstep(0.22, 1.0, vRim);
-            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.018;
-            float softEdge = pow(rim, 1.32) * 0.26;
-            float brightEdge = pow(rim, 3.7) * 0.44;
-            float upperGlint = pow(rim, 2.4) * vUpper * 0.22;
+            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.01;
+            float softEdge = pow(rim, 1.32) * 0.16;
+            float brightEdge = pow(rim, 3.7) * 0.24;
+            float upperGlint = pow(rim, 2.4) * vUpper * 0.12;
             vec3 color = uAtmosphere * glassBody;
             color += uRim * softEdge;
             color += uRimStrong * upperGlint;
             color += uHighlight * brightEdge;
-            float alpha = clamp(glassBody + softEdge * 0.82 + brightEdge * 0.68 + upperGlint * 0.42, 0.0, 0.54);
+            float alpha = clamp(glassBody + softEdge * 0.58 + brightEdge * 0.4 + upperGlint * 0.28, 0.0, 0.28);
 
             gl_FragColor = vec4(color, alpha);
           }
@@ -1038,13 +1038,13 @@ function LightReferenceGlassAperture({ theme }: { theme: GlobeTheme }) {
           void main() {
             vec2 centeredUv = vUv - vec2(0.5);
             float radius = length(centeredUv) * 2.0;
-            float inside = 1.0 - smoothstep(1.0, 1.018, radius);
-            float centerWash = smoothstep(0.0, 0.84, radius) * 0.052;
-            float innerFrost = smoothstep(0.64, 0.98, radius) * (1.0 - smoothstep(1.0, 1.018, radius));
-            float glassLip = smoothstep(0.9, 1.0, radius) * (1.0 - smoothstep(1.0, 1.018, radius));
-            float highlight = smoothstep(0.955, 1.0, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
+            float inside = 1.0 - smoothstep(1.0, 1.012, radius);
+            float centerWash = smoothstep(0.0, 0.84, radius) * 0.046;
+            float innerFrost = smoothstep(0.62, 0.965, radius) * (1.0 - smoothstep(0.998, 1.012, radius));
+            float glassLip = smoothstep(0.86, 0.992, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
+            float highlight = smoothstep(0.936, 0.997, radius) * (1.0 - smoothstep(0.998, 1.009, radius));
             vec3 frost = mix(vec3(0.86, 0.91, 0.97), vec3(1.0), highlight * 0.82);
-            float alpha = (centerWash + innerFrost * 0.16 + glassLip * 0.34 + highlight * 0.36) * inside;
+            float alpha = (centerWash + innerFrost * 0.2 + glassLip * 0.52 + highlight * 0.52) * inside;
 
             if (alpha < 0.002) discard;
             gl_FragColor = vec4(frost, alpha);
