@@ -81,13 +81,13 @@ const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
 const ROUTE_CORE_OPACITY = 0.54;
 const ROUTE_GLOW_OPACITY = 0.06;
-const LIGHT_ROUTE_CORE_OPACITY = 0.46;
-const LIGHT_ROUTE_PULSE_OPACITY = 0.52;
+const LIGHT_ROUTE_CORE_OPACITY = 0.32;
+const LIGHT_ROUTE_PULSE_OPACITY = 0.38;
 const LIGHT_ROUTE_GLOW_ALPHA_BY_TONE = {
-  cyan: 0.08,
-  purple: 0.06,
+  cyan: 0.045,
+  purple: 0.034,
   pink: 0.012,
-  gold: 0.06,
+  gold: 0.036,
 } as const;
 const ROUTE_HORIZON_FADE_START = -0.08;
 const ROUTE_HORIZON_FADE_END = 0.34;
@@ -1354,7 +1354,7 @@ function NetworkRouteArc({
   return (
     <group ref={routeRef} name={`network-route-${route.id}`}>
       <mesh renderOrder={4}>
-        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, isLightTheme ? ROUTE_LINE_RADIUS * 1.14 : ROUTE_LINE_RADIUS, 8, false]} />
+        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, isLightTheme ? ROUTE_LINE_RADIUS * 0.82 : ROUTE_LINE_RADIUS, 8, false]} />
         <meshBasicMaterial
           ref={coreMaterialRef}
           color={routeColor}
@@ -1367,7 +1367,7 @@ function NetworkRouteArc({
       </mesh>
 
       <mesh renderOrder={3}>
-        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS * 2.8, 8, false]} />
+        <tubeGeometry args={[curve, ROUTE_CURVE_SEGMENTS, ROUTE_LINE_RADIUS * (isLightTheme ? 1.6 : 2.8), 8, false]} />
         <meshBasicMaterial
           ref={glowMaterialRef}
           color={routeColor}
