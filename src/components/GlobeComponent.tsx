@@ -1193,9 +1193,7 @@ function DigitalGlobeSurface({
         <meshBasicMaterial color={palette.oceanVeil} transparent opacity={palette.oceanVeilOpacity} depthWrite={false} />
       </mesh>
 
-      {theme === "light" ? <LightReferenceGlassShell /> : null}
-
-      <RimAtmosphere theme={theme} />
+      {theme === "light" ? <LightReferenceGlassShell /> : <RimAtmosphere theme={theme} />}
     </group>
   );
 }
