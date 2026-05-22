@@ -993,15 +993,15 @@ function LightReferenceGlassShell() {
 
           void main() {
             float rim = smoothstep(0.22, 1.0, vRim);
-            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.03;
-            float softEdge = pow(rim, 1.42) * 0.2;
-            float brightEdge = pow(rim, 4.1) * 0.34;
-            float upperGlint = pow(rim, 2.6) * vUpper * 0.18;
+            float glassBody = smoothstep(0.06, 0.9, vFacing) * 0.018;
+            float softEdge = pow(rim, 1.32) * 0.26;
+            float brightEdge = pow(rim, 3.7) * 0.44;
+            float upperGlint = pow(rim, 2.4) * vUpper * 0.22;
             vec3 color = uAtmosphere * glassBody;
             color += uRim * softEdge;
             color += uRimStrong * upperGlint;
             color += uHighlight * brightEdge;
-            float alpha = clamp(glassBody + softEdge * 0.72 + brightEdge * 0.58 + upperGlint * 0.36, 0.0, 0.46);
+            float alpha = clamp(glassBody + softEdge * 0.82 + brightEdge * 0.68 + upperGlint * 0.42, 0.0, 0.54);
 
             gl_FragColor = vec4(color, alpha);
           }
@@ -1067,7 +1067,7 @@ function DigitalGlobeSurface({
       vViewFacing = viewNormal.z;
       vEdgeFade = smoothstep(-0.28, 0.04, viewNormal.z);
       vNorthLight = smoothstep(0.02, 0.78, sphereNormal.y);
-      vPolarFade = 1.0 - smoothstep(0.964, 0.992, abs(sphereNormal.y));
+      vPolarFade = 1.0 - smoothstep(0.91, 0.972, abs(sphereNormal.y));
       vSeed = aSeed;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
