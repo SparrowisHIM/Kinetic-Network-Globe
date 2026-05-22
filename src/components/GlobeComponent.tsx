@@ -1039,12 +1039,12 @@ function LightReferenceGlassAperture({ theme }: { theme: GlobeTheme }) {
             vec2 centeredUv = vUv - vec2(0.5);
             float radius = length(centeredUv) * 2.0;
             float inside = 1.0 - smoothstep(1.0, 1.018, radius);
-            float centerWash = smoothstep(0.0, 0.84, radius) * 0.035;
+            float centerWash = smoothstep(0.0, 0.84, radius) * 0.052;
             float innerFrost = smoothstep(0.64, 0.98, radius) * (1.0 - smoothstep(1.0, 1.018, radius));
             float glassLip = smoothstep(0.9, 1.0, radius) * (1.0 - smoothstep(1.0, 1.018, radius));
             float highlight = smoothstep(0.955, 1.0, radius) * (1.0 - smoothstep(1.0, 1.012, radius));
-            vec3 frost = mix(vec3(0.82, 0.88, 0.95), vec3(1.0), highlight * 0.74);
-            float alpha = (centerWash + innerFrost * 0.1 + glassLip * 0.18 + highlight * 0.24) * inside;
+            vec3 frost = mix(vec3(0.86, 0.91, 0.97), vec3(1.0), highlight * 0.82);
+            float alpha = (centerWash + innerFrost * 0.16 + glassLip * 0.34 + highlight * 0.36) * inside;
 
             if (alpha < 0.002) discard;
             gl_FragColor = vec4(frost, alpha);
