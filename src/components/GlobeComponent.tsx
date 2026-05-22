@@ -81,13 +81,13 @@ const ROUTE_NODE_RADIUS = 0.019;
 const ROUTE_PULSE_SEGMENTS = 12;
 const ROUTE_CORE_OPACITY = 0.54;
 const ROUTE_GLOW_OPACITY = 0.06;
-const LIGHT_ROUTE_CORE_OPACITY = 0.9;
-const LIGHT_ROUTE_PULSE_OPACITY = 0.92;
+const LIGHT_ROUTE_CORE_OPACITY = 0.46;
+const LIGHT_ROUTE_PULSE_OPACITY = 0.52;
 const LIGHT_ROUTE_GLOW_ALPHA_BY_TONE = {
-  cyan: 0.18,
-  purple: 0.16,
-  pink: 0.16,
-  gold: 0.16,
+  cyan: 0.08,
+  purple: 0.06,
+  pink: 0.035,
+  gold: 0.06,
 } as const;
 const ROUTE_HORIZON_FADE_START = -0.08;
 const ROUTE_HORIZON_FADE_END = 0.34;
@@ -1288,6 +1288,7 @@ function NetworkRouteArc({
   );
   const routeCoreOpacity = isLightTheme ? LIGHT_ROUTE_CORE_OPACITY : ROUTE_CORE_OPACITY;
   const routeGlowOpacity = isLightTheme ? LIGHT_ROUTE_GLOW_ALPHA_BY_TONE[lightRouteTone] : ROUTE_GLOW_OPACITY;
+  const lightToneOpacityScale = lightRouteTone === "pink" ? 0.42 : 1;
   const cameraDirectionRef = useRef(new Vector3());
   const visibilitySamples = useMemo(
     () => [0.14, 0.32, 0.5, 0.68, 0.86].map((progress) => curve.getPointAt(progress)),
@@ -1327,7 +1328,7 @@ function NetworkRouteArc({
           ) * endpointVisibility;
 
     if (coreMaterialRef.current) {
-      coreMaterialRef.current.opacity = routeCoreOpacity * routeVisibility;
+      coreMaterialRef.current.opacity = routeCoreOpacity * lightToneOpacityScale * routeVisibility;
     }
 
     if (glowMaterialRef.current) {
@@ -1386,7 +1387,7 @@ function NetworkRouteArc({
           <meshBasicMaterial
             color={pulseColor}
             transparent
-            opacity={isLightTheme ? LIGHT_ROUTE_PULSE_OPACITY : 0.78}
+            opacity={isLightTheme ? LIGHT_ROUTE_PULSE_OPACITY * lightToneOpacityScale : 0.78}
             depthTest
             depthWrite={false}
             blending={isLightTheme ? NormalBlending : AdditiveBlending}
