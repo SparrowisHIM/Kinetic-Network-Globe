@@ -2057,7 +2057,7 @@ function ControlGlobeIcon({ isSpinning }: { isSpinning: boolean }) {
         orthographic
         camera={{ position: [0, 0, 4], zoom: 26 }}
         dpr={[1, 1.5]}
-        gl={{ alpha: true, antialias: true }}
+        gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
       >
         <ambientLight intensity={0.9} />
         <ControlGlobeModel isSpinning={isSpinning} />
