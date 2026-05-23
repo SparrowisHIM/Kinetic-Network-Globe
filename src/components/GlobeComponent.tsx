@@ -2018,27 +2018,32 @@ function ControlGlobeModel({ isSpinning }: { isSpinning: boolean }) {
     <group ref={globeRef} rotation={[-0.18, 0, -0.18]}>
       <mesh>
         <sphereGeometry args={[0.74, 32, 18]} />
-        <meshBasicMaterial color="#123541" transparent opacity={0.34} depthWrite={false} />
+        <meshBasicMaterial color="#153945" transparent opacity={0.28} depthWrite={false} />
       </mesh>
 
       <mesh>
-        <sphereGeometry args={[0.76, 32, 18]} />
-        <meshBasicMaterial color="#f7f9fc" wireframe transparent opacity={0.74} depthWrite={false} />
+        <torusGeometry args={[0.78, 0.018, 8, 96]} />
+        <meshBasicMaterial color="#f7f9fc" transparent opacity={0.86} depthWrite={false} />
       </mesh>
 
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.765, 0.01, 8, 96]} />
-        <meshBasicMaterial color="#9ff5ff" transparent opacity={0.86} depthWrite={false} />
+      <mesh scale={[1, 0.34, 1]}>
+        <torusGeometry args={[0.72, 0.014, 8, 96]} />
+        <meshBasicMaterial color="#a8f5ff" transparent opacity={0.76} depthWrite={false} />
       </mesh>
 
       <mesh rotation={[0, Math.PI / 2, 0]}>
-        <torusGeometry args={[0.765, 0.01, 8, 96]} />
-        <meshBasicMaterial color="#e9fbff" transparent opacity={0.62} depthWrite={false} />
+        <torusGeometry args={[0.76, 0.014, 8, 96]} />
+        <meshBasicMaterial color="#e9fbff" transparent opacity={0.68} depthWrite={false} />
       </mesh>
 
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <torusGeometry args={[0.765, 0.01, 8, 96]} />
-        <meshBasicMaterial color="#77e6ff" transparent opacity={0.56} depthWrite={false} />
+      <mesh rotation={[0, Math.PI / 3, 0]}>
+        <torusGeometry args={[0.76, 0.012, 8, 96]} />
+        <meshBasicMaterial color="#77e6ff" transparent opacity={0.58} depthWrite={false} />
+      </mesh>
+
+      <mesh rotation={[0, -Math.PI / 3, 0]}>
+        <torusGeometry args={[0.76, 0.012, 8, 96]} />
+        <meshBasicMaterial color="#77e6ff" transparent opacity={0.5} depthWrite={false} />
       </mesh>
     </group>
   );
