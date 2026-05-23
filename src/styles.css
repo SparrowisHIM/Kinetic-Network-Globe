@@ -504,6 +504,7 @@ body {
   place-items: center;
   padding: 0;
   color: color-mix(in srgb, var(--panel-accent), white 34%);
+  perspective: 5rem;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--panel-accent), transparent 74%);
 }
 
@@ -515,6 +516,7 @@ body {
   place-items: center;
   color: color-mix(in srgb, var(--panel-accent), white 34%);
   filter: drop-shadow(0 0 0.42rem color-mix(in srgb, var(--panel-accent), transparent 58%));
+  transform-style: preserve-3d;
 }
 
 .orbit-icon svg {
@@ -522,6 +524,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: visible;
+  transform: translateZ(0.01rem);
 }
 
 .orbit-icon svg path:last-child {
@@ -818,11 +821,28 @@ body {
 
 @keyframes globe-control-spin {
   0% {
-    transform: rotate(0deg);
+    opacity: 0.96;
+    transform: rotateY(0deg) scaleX(1);
+  }
+
+  24% {
+    opacity: 0.74;
+    transform: rotateY(84deg) scaleX(0.62);
+  }
+
+  50% {
+    opacity: 0.92;
+    transform: rotateY(180deg) scaleX(1);
+  }
+
+  76% {
+    opacity: 0.74;
+    transform: rotateY(276deg) scaleX(0.62);
   }
 
   100% {
-    transform: rotate(360deg);
+    opacity: 0.96;
+    transform: rotateY(360deg) scaleX(1);
   }
 }
 
