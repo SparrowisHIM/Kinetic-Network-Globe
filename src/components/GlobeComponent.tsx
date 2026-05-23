@@ -2018,22 +2018,22 @@ function ControlGlobeModel({ isSpinning }: { isSpinning: boolean }) {
     <group ref={globeRef} rotation={[-0.22, 0, -0.16]}>
       <mesh>
         <sphereGeometry args={[0.84, 32, 24]} />
-        <meshStandardMaterial color="#62dce9" emissive="#0b6572" emissiveIntensity={0.55} roughness={0.38} metalness={0.12} />
+        <meshStandardMaterial color="#3aa8b6" emissive="#064852" emissiveIntensity={0.28} roughness={0.48} metalness={0.08} />
       </mesh>
 
       <mesh>
         <sphereGeometry args={[0.88, 32, 24]} />
-        <meshBasicMaterial color="#d8fbff" transparent opacity={0.13} depthWrite={false} />
+        <meshBasicMaterial color="#8de7ef" transparent opacity={0.07} depthWrite={false} />
       </mesh>
 
       <mesh scale={[1, 0.34, 1]}>
         <torusGeometry args={[0.74, 0.018, 8, 96]} />
-        <meshBasicMaterial color="#eaffff" transparent opacity={0.82} depthWrite={false} />
+        <meshBasicMaterial color="#aeeaf1" transparent opacity={0.48} depthWrite={false} />
       </mesh>
 
       <mesh rotation={[0, Math.PI / 2, 0]}>
         <torusGeometry args={[0.82, 0.018, 8, 96]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.72} depthWrite={false} />
+        <meshBasicMaterial color="#cdeff3" transparent opacity={0.38} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -2049,9 +2049,9 @@ function ControlGlobeIcon({ isSpinning }: { isSpinning: boolean }) {
         dpr={[1, 1.5]}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
       >
-        <ambientLight intensity={0.62} />
-        <directionalLight position={[1.8, 2.4, 3]} intensity={1.8} color="#f7fbff" />
-        <pointLight position={[-2, -1, 2]} intensity={1.1} color="#45e4ff" />
+        <ambientLight intensity={0.48} />
+        <directionalLight position={[1.8, 2.4, 3]} intensity={1.05} color="#e8fbff" />
+        <pointLight position={[-2, -1, 2]} intensity={0.56} color="#2bb7c8" />
         <ControlGlobeModel isSpinning={isSpinning} />
       </Canvas>
     </span>
