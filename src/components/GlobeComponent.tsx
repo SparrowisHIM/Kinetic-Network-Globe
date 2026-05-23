@@ -2005,6 +2005,62 @@ function RoutePowerSwitch({
   );
 }
 
+function ControlGlobeModel({ isSpinning }: { isSpinning: boolean }) {
+  const globeRef = useRef<Group>(null);
+
+  useFrame((_, delta) => {
+    if (!isSpinning || !globeRef.current) return;
+
+    globeRef.current.rotation.y += delta * 1.65;
+  });
+
+  return (
+    <group ref={globeRef} rotation={[-0.18, 0, -0.18]}>
+      <mesh>
+        <sphereGeometry args={[0.74, 32, 18]} />
+        <meshBasicMaterial color="#123541" transparent opacity={0.34} depthWrite={false} />
+      </mesh>
+
+      <mesh>
+        <sphereGeometry args={[0.76, 32, 18]} />
+        <meshBasicMaterial color="#f7f9fc" wireframe transparent opacity={0.74} depthWrite={false} />
+      </mesh>
+
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.765, 0.01, 8, 96]} />
+        <meshBasicMaterial color="#9ff5ff" transparent opacity={0.86} depthWrite={false} />
+      </mesh>
+
+      <mesh rotation={[0, Math.PI / 2, 0]}>
+        <torusGeometry args={[0.765, 0.01, 8, 96]} />
+        <meshBasicMaterial color="#e9fbff" transparent opacity={0.62} depthWrite={false} />
+      </mesh>
+
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <torusGeometry args={[0.765, 0.01, 8, 96]} />
+        <meshBasicMaterial color="#77e6ff" transparent opacity={0.56} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function ControlGlobeIcon({ isSpinning }: { isSpinning: boolean }) {
+  return (
+    <span className="orbit-icon" aria-hidden="true">
+      <Canvas
+        className="control-globe-canvas"
+        orthographic
+        camera={{ position: [0, 0, 4], zoom: 26 }}
+        dpr={[1, 1.5]}
+        gl={{ alpha: true, antialias: true }}
+      >
+        <ambientLight intensity={0.9} />
+        <ControlGlobeModel isSpinning={isSpinning} />
+      </Canvas>
+    </span>
+  );
+}
+
 function getModeControls(theme: GlobeTheme, mode: GlobeMode): GlobeControlsState {
   return {
     theme,
@@ -2087,15 +2143,7 @@ function GlobeControlPanel({
           aria-pressed={controls.autoSpin}
           onClick={toggleAutoSpin}
         >
-          <span className="orbit-icon" aria-hidden="true">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M24 0V24H0V0H24Z" fill="white" fillOpacity="0.01" />
-              <path
-                d="M9.19473 3.4458C8.45728 5.6226 8 8.65109 8 12C8 15.3489 8.45728 18.3774 9.19473 20.5542M3.4458 9.19473C4.33533 6.48059 6.48059 4.33533 9.19473 3.4458C10.0775 3.15648 11.0205 3 12 3C12.9795 3 13.9225 3.15648 14.8053 3.4458M14.8053 3.4458C15.5427 5.6226 16 8.65109 16 12C16 15.3489 15.5427 18.3774 14.8053 20.5542M20.5542 14.8053C20.8435 13.9225 21 12.9795 21 12C21 11.0205 20.8435 10.0775 20.5542 9.19473C19.6647 6.48059 17.5194 4.33533 14.8053 3.4458M20.5542 9.19473C18.3774 8.45728 15.3489 8 12 8C8.65109 8 5.6226 8.45728 3.4458 9.19473M20.5542 14.8053C18.3774 15.5427 15.3489 16 12 16C8.65109 16 5.6226 15.5427 3.4458 14.8053M3.4458 14.8053C4.33533 17.5194 6.48059 19.6647 9.19473 20.5542C10.0775 20.8435 11.0205 21 12 21C12.9795 21 13.9225 20.8435 14.8053 20.5542C17.5194 19.6647 19.6647 17.5194 20.5542 14.8053M3.4458 14.8053C3.15648 13.9225 3 12.9795 3 12C3 11.0205 3.15648 10.0775 3.4458 9.19473"
-                stroke="currentColor"
-              />
-            </svg>
-          </span>
+          <ControlGlobeIcon isSpinning={controls.autoSpin} />
         </button>
         <button className="control-version-button" type="button" onClick={applyNextMode}>
           <span>{activeMode.label}</span>
