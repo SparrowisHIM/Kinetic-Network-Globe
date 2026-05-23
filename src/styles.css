@@ -422,7 +422,6 @@ body {
 
 .control-icon-button,
 .control-orbit-button,
-.control-version-button,
 .control-copy-button,
 .control-mode-row button,
 .control-reset-button,
@@ -445,7 +444,6 @@ body {
 
 .control-icon-button:active,
 .control-orbit-button:active,
-.control-version-button:active,
 .control-copy-button:active,
 .control-mode-row button:active,
 .control-reset-button:active,
@@ -455,7 +453,6 @@ body {
 
 .control-icon-button:focus-visible,
 .control-orbit-button:focus-visible,
-.control-version-button:focus-visible,
 .control-copy-button:focus-visible,
 .control-mode-row button:focus-visible,
 .control-reset-button:focus-visible,
@@ -542,29 +539,13 @@ body {
   animation: globe-control-pulse 2.6s ease-in-out infinite;
 }
 
-.control-version-button,
 .control-copy-button {
   min-height: 2.25rem;
   padding: 0 0.82rem;
 }
 
-.control-version-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.45rem;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.control-version-button span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .control-copy-button {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
 }
 
 .control-panel-divider {
@@ -811,7 +792,6 @@ body {
 
 .control-reset-button:hover,
 .control-copy-button:hover,
-.control-version-button:hover,
 .control-orbit-button:hover,
 .control-icon-button:hover,
 .control-mode-row button:hover,
@@ -965,7 +945,6 @@ body {
     min-height: 2rem;
   }
 
-  .control-version-button,
   .control-orbit-button,
   .control-copy-button {
     min-height: 2rem;
