@@ -514,7 +514,7 @@ body {
   height: 1.72rem;
   place-items: center;
   color: color-mix(in srgb, var(--panel-accent), white 34%);
-  filter: drop-shadow(0 0 0.24rem color-mix(in srgb, var(--panel-accent), transparent 76%));
+  filter: drop-shadow(0 0 0.32rem color-mix(in srgb, var(--panel-accent), transparent 70%));
 }
 
 .orbit-icon::before {
@@ -522,10 +522,10 @@ body {
   inset: 0.16rem;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.14), transparent 34%),
-    radial-gradient(circle, color-mix(in srgb, var(--panel-accent), transparent 82%), transparent 70%);
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.18), transparent 34%),
+    radial-gradient(circle, color-mix(in srgb, var(--panel-accent), transparent 76%), transparent 70%);
   content: "";
-  opacity: 0.48;
+  opacity: 0.56;
 }
 
 .control-globe-canvas {
