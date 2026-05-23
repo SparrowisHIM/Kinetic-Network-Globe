@@ -2050,7 +2050,7 @@ function ControlGlobeIcon({ isSpinning }: { isSpinning: boolean }) {
       <Canvas
         className="control-globe-canvas"
         orthographic
-        camera={{ position: [0, 0, 4], zoom: 24 }}
+        camera={{ position: [0, 0, 4], zoom: 12.5 }}
         dpr={[1, 1.5]}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
       >
