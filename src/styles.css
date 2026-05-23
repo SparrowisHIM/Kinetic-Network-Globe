@@ -504,40 +504,28 @@ body {
   place-items: center;
   padding: 0;
   color: color-mix(in srgb, var(--panel-accent), white 34%);
-  perspective: 5rem;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--panel-accent), transparent 74%);
 }
 
 .orbit-icon {
   position: relative;
   display: grid;
-  width: 1.18rem;
-  height: 1.18rem;
+  width: 1.55rem;
+  height: 1.55rem;
   place-items: center;
   color: color-mix(in srgb, var(--panel-accent), white 34%);
   filter: drop-shadow(0 0 0.42rem color-mix(in srgb, var(--panel-accent), transparent 58%));
-  transform-style: preserve-3d;
 }
 
-.orbit-icon svg {
+.control-globe-canvas {
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
-  transform: translateZ(0.01rem);
-}
-
-.orbit-icon svg path:last-child {
-  stroke-width: 1.35;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .control-orbit-button.is-spinning .orbit-icon {
-  animation: globe-control-spin 5.8s linear infinite;
-}
-
-.control-orbit-button.is-spinning .orbit-icon svg path:last-child {
   animation: globe-control-pulse 2.6s ease-in-out infinite;
 }
 
@@ -819,43 +807,16 @@ body {
   color: var(--panel-text);
 }
 
-@keyframes globe-control-spin {
-  0% {
-    opacity: 0.96;
-    transform: rotateY(0deg) scaleX(1);
-  }
-
-  24% {
-    opacity: 0.74;
-    transform: rotateY(84deg) scaleX(0.62);
-  }
-
-  50% {
-    opacity: 0.92;
-    transform: rotateY(180deg) scaleX(1);
-  }
-
-  76% {
-    opacity: 0.74;
-    transform: rotateY(276deg) scaleX(0.62);
-  }
-
-  100% {
-    opacity: 0.96;
-    transform: rotateY(360deg) scaleX(1);
-  }
-}
-
 @keyframes globe-control-pulse {
   0%,
   100% {
-    opacity: 0.74;
-    stroke-width: 1.2;
+    opacity: 0.82;
+    transform: scale(0.98);
   }
 
   50% {
     opacity: 1;
-    stroke-width: 1.55;
+    transform: scale(1.04);
   }
 }
 
@@ -1005,8 +966,8 @@ body {
   }
 
   .orbit-icon {
-    width: 1.02rem;
-    height: 1.02rem;
+    width: 1.36rem;
+    height: 1.36rem;
   }
 
   .control-section {
