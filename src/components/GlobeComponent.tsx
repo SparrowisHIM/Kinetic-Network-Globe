@@ -2018,12 +2018,12 @@ function ControlGlobeModel({ isSpinning }: { isSpinning: boolean }) {
     <group ref={globeRef} rotation={[-0.22, 0, -0.16]}>
       <mesh>
         <sphereGeometry args={[0.84, 32, 24]} />
-        <meshStandardMaterial color="#3aa8b6" emissive="#064852" emissiveIntensity={0.28} roughness={0.48} metalness={0.08} />
+        <meshStandardMaterial color="#49bbc8" emissive="#08616b" emissiveIntensity={0.38} roughness={0.44} metalness={0.08} />
       </mesh>
 
       <mesh>
         <sphereGeometry args={[0.88, 32, 24]} />
-        <meshBasicMaterial color="#8de7ef" transparent opacity={0.07} depthWrite={false} />
+        <meshBasicMaterial color="#a7eef4" transparent opacity={0.1} depthWrite={false} />
       </mesh>
 
       <mesh scale={[1, 0.34, 1]}>
@@ -2049,9 +2049,9 @@ function ControlGlobeIcon({ isSpinning }: { isSpinning: boolean }) {
         dpr={[1, 1.5]}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
       >
-        <ambientLight intensity={0.48} />
-        <directionalLight position={[1.8, 2.4, 3]} intensity={1.05} color="#e8fbff" />
-        <pointLight position={[-2, -1, 2]} intensity={0.56} color="#2bb7c8" />
+        <ambientLight intensity={0.56} />
+        <directionalLight position={[1.8, 2.4, 3]} intensity={1.26} color="#e8fbff" />
+        <pointLight position={[-2, -1, 2]} intensity={0.72} color="#2bb7c8" />
         <ControlGlobeModel isSpinning={isSpinning} />
       </Canvas>
     </span>
