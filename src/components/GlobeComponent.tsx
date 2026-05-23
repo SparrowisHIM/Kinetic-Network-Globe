@@ -2017,8 +2017,13 @@ function ControlGlobeModel({ isSpinning }: { isSpinning: boolean }) {
   return (
     <group ref={globeRef} rotation={[-0.18, 0, -0.18]}>
       <mesh>
+        <sphereGeometry args={[0.82, 32, 18]} />
+        <meshBasicMaterial color="#7ee5ff" transparent opacity={0.08} depthWrite={false} />
+      </mesh>
+
+      <mesh>
         <sphereGeometry args={[0.74, 32, 18]} />
-        <meshBasicMaterial color="#153945" transparent opacity={0.28} depthWrite={false} />
+        <meshBasicMaterial color="#225866" transparent opacity={0.42} depthWrite={false} />
       </mesh>
 
       <mesh>
