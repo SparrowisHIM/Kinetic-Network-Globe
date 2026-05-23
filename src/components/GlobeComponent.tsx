@@ -2050,11 +2050,13 @@ function ControlGlobeIcon({ isSpinning }: { isSpinning: boolean }) {
       <Canvas
         className="control-globe-canvas"
         orthographic
-        camera={{ position: [0, 0, 4], zoom: 26 }}
+        camera={{ position: [0, 0, 4], zoom: 24 }}
         dpr={[1, 1.5]}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
       >
-        <ambientLight intensity={0.9} />
+        <ambientLight intensity={0.62} />
+        <directionalLight position={[1.8, 2.4, 3]} intensity={1.8} color="#f7fbff" />
+        <pointLight position={[-2, -1, 2]} intensity={1.1} color="#45e4ff" />
         <ControlGlobeModel isSpinning={isSpinning} />
       </Canvas>
     </span>
