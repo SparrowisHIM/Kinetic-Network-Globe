@@ -509,47 +509,33 @@ body {
 
 .orbit-icon {
   position: relative;
+  display: grid;
+  width: 1.18rem;
+  height: 1.18rem;
+  place-items: center;
+  color: color-mix(in srgb, var(--panel-accent), white 34%);
+  filter: drop-shadow(0 0 0.42rem color-mix(in srgb, var(--panel-accent), transparent 58%));
+}
+
+.orbit-icon svg {
   display: block;
-  width: 1.05rem;
-  height: 1.05rem;
-  border: 1px solid color-mix(in srgb, var(--panel-accent), white 22%);
-  border-radius: 999px;
-  box-shadow:
-    inset -0.16rem -0.1rem 0.22rem rgba(0, 0, 0, 0.28),
-    0 0 0.72rem color-mix(in srgb, var(--panel-accent), transparent 66%);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.orbit-icon::before,
-.orbit-icon::after {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  content: "";
-  transform: translate(-50%, -50%);
+.orbit-icon svg path:last-child {
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.orbit-icon::before {
-  width: 1.56rem;
-  height: 0.54rem;
-  border: 1px solid color-mix(in srgb, var(--panel-accent), transparent 28%);
-  border-radius: 999px;
-  transform: translate(-50%, -50%) rotate(-22deg);
+.control-orbit-button.is-spinning .orbit-icon {
+  animation: globe-control-spin 5.8s linear infinite;
 }
 
-.orbit-icon::after {
-  width: 0.22rem;
-  height: 0.22rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel-accent), white 30%);
-  box-shadow: 0 0 0.45rem color-mix(in srgb, var(--panel-accent), transparent 12%);
-  transform: translate(0.42rem, -0.34rem);
-}
-
-.control-orbit-button.is-spinning .orbit-icon::before {
-  animation: orbit-ring-spin 3.4s linear infinite;
-}
-
-.control-orbit-button.is-spinning .orbit-icon::after {
-  animation: orbit-dot-spin 3.4s linear infinite;
+.control-orbit-button.is-spinning .orbit-icon svg path:last-child {
+  animation: globe-control-pulse 2.6s ease-in-out infinite;
 }
 
 .control-version-button,
@@ -830,23 +816,26 @@ body {
   color: var(--panel-text);
 }
 
-@keyframes orbit-ring-spin {
+@keyframes globe-control-spin {
   0% {
-    transform: translate(-50%, -50%) rotate(-22deg);
+    transform: rotate(0deg);
   }
 
   100% {
-    transform: translate(-50%, -50%) rotate(338deg);
+    transform: rotate(360deg);
   }
 }
 
-@keyframes orbit-dot-spin {
-  0% {
-    transform: rotate(0deg) translate(0.55rem) rotate(0deg);
+@keyframes globe-control-pulse {
+  0%,
+  100% {
+    opacity: 0.74;
+    stroke-width: 1.2;
   }
 
-  100% {
-    transform: rotate(360deg) translate(0.55rem) rotate(-360deg);
+  50% {
+    opacity: 1;
+    stroke-width: 1.55;
   }
 }
 
@@ -996,13 +985,8 @@ body {
   }
 
   .orbit-icon {
-    width: 0.92rem;
-    height: 0.92rem;
-  }
-
-  .orbit-icon::before {
-    width: 1.34rem;
-    height: 0.46rem;
+    width: 1.02rem;
+    height: 1.02rem;
   }
 
   .control-section {
