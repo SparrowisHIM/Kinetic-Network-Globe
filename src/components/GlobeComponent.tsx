@@ -155,6 +155,7 @@ type GlobeControlsState = {
   theme: GlobeTheme;
   rotationSpeed: number;
   continentIntensity: number;
+  routesEnabled: boolean;
 };
 
 type GlobeSceneProps = GlobeGroupProps & {
@@ -202,7 +203,38 @@ const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
   theme: "dark",
   rotationSpeed: 1,
   continentIntensity: 1,
+  routesEnabled: true,
 };
+
+const CONTROL_PRESETS = [
+  {
+    label: "Classic orbit",
+    controls: {
+      theme: "dark",
+      rotationSpeed: 1,
+      continentIntensity: 1,
+      routesEnabled: true,
+    },
+  },
+  {
+    label: "Showcase",
+    controls: {
+      theme: "light",
+      rotationSpeed: 1.2,
+      continentIntensity: 2.2,
+      routesEnabled: true,
+    },
+  },
+  {
+    label: "Launch mode",
+    controls: {
+      theme: "dark",
+      rotationSpeed: 2.4,
+      continentIntensity: 4,
+      routesEnabled: true,
+    },
+  },
+] satisfies Array<{ label: string; controls: GlobeControlsState }>;
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
 const LIGHT_CONTINENT_INTENSITY_GAIN = 1.68;
@@ -1754,6 +1786,33 @@ function ControlRange({
   );
 }
 
+function RoutePowerSwitch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <button
+      className={`route-power-switch${checked ? " is-on" : ""}`}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="route-power-copy">
+        <span>Live routes</span>
+        <strong>{checked ? "Transmission online" : "Network hidden"}</strong>
+      </span>
+      <span className="route-power-track" aria-hidden="true">
+        <span className="route-power-sparks" />
+        <span className="route-power-thumb" />
+      </span>
+    </button>
+  );
+}
+
 function GlobeControlPanel({
   controls,
   onControlsChange,
@@ -1772,10 +1831,38 @@ function GlobeControlPanel({
     [controls, onControlsChange],
   );
   const resetControls = useCallback(() => onControlsChange(DEFAULT_GLOBE_CONTROLS), [onControlsChange]);
+  const [copied, setCopied] = useState(false);
+  const activePresetIndex = useMemo(
+    () =>
+      CONTROL_PRESETS.findIndex(
+        (preset) =>
+          preset.controls.theme === controls.theme &&
+          preset.controls.rotationSpeed === controls.rotationSpeed &&
+          preset.controls.continentIntensity === controls.continentIntensity &&
+          preset.controls.routesEnabled === controls.routesEnabled,
+      ),
+    [controls],
+  );
+  const activePresetLabel = activePresetIndex >= 0 ? CONTROL_PRESETS[activePresetIndex].label : "Custom rig";
+  const applyNextPreset = useCallback(() => {
+    const nextPreset = CONTROL_PRESETS[(activePresetIndex + 1) % CONTROL_PRESETS.length];
+
+    onControlsChange(nextPreset.controls);
+  }, [activePresetIndex, onControlsChange]);
+  const boostControls = useCallback(() => {
+    onControlsChange({
+      ...controls,
+      rotationSpeed: Math.min(4, Number((controls.rotationSpeed + 0.6).toFixed(1))),
+      continentIntensity: Math.min(8, Number((controls.continentIntensity + 1).toFixed(2))),
+      routesEnabled: true,
+    });
+  }, [controls, onControlsChange]);
   const copyControls = useCallback(() => {
     const serializedControls = JSON.stringify(controls, null, 2);
 
     void navigator.clipboard?.writeText(serializedControls);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
   }, [controls]);
 
   if (!isOpen) {
@@ -1810,15 +1897,15 @@ function GlobeControlPanel({
       </header>
 
       <div className="control-panel-actions">
-        <button className="control-icon-button" type="button" aria-label="Add control preset">
-          +
+        <button className="control-boost-button" type="button" onClick={boostControls}>
+          Boost
         </button>
-        <button className="control-version-button" type="button">
-          <span>Version 1</span>
+        <button className="control-version-button" type="button" onClick={applyNextPreset}>
+          <span>{activePresetLabel}</span>
           <span aria-hidden="true">v</span>
         </button>
         <button className="control-copy-button" type="button" onClick={copyControls}>
-          Copy
+          {copied ? "Copied" : "Export"}
         </button>
       </div>
 
@@ -1868,8 +1955,9 @@ function GlobeControlPanel({
       <section className="control-section control-section-collapsed">
         <div className="control-section-title">
           <span>Routes</span>
-          <span aria-hidden="true">v</span>
+          <span aria-hidden="true">{controls.routesEnabled ? "on" : "off"}</span>
         </div>
+        <RoutePowerSwitch checked={controls.routesEnabled} onChange={(value) => updateControl("routesEnabled", value)} />
       </section>
 
       <button className="control-reset-button" type="button" onClick={resetControls}>
@@ -2122,7 +2210,7 @@ function GlobeGroup({
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, DEFAULT_ROTATION_Y, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface theme={controls.theme} continentIntensity={controls.continentIntensity} />
-          {SHOW_NETWORK_LAYER ? (
+          {SHOW_NETWORK_LAYER && controls.routesEnabled ? (
             <NetworkRouteLayer
               prefersReducedMotion={prefersReducedMotion}
               isCompactViewport={isCompactViewport}
