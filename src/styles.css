@@ -708,7 +708,7 @@ body {
 }
 
 .route-power-switch.is-on::before {
-  opacity: 1;
+  opacity: 0.58;
 }
 
 .route-power-copy {
@@ -732,7 +732,7 @@ body {
 }
 
 .route-power-switch.is-on .route-power-copy strong {
-  color: color-mix(in srgb, var(--panel-accent), white 24%);
+  color: color-mix(in srgb, var(--panel-accent), white 4%);
 }
 
 .route-power-track {
@@ -755,11 +755,11 @@ body {
 
 .route-power-switch.is-on .route-power-track {
   background:
-    radial-gradient(circle at 76% 50%, rgba(255, 255, 255, 0.52), transparent 16%),
-    linear-gradient(90deg, #1ee8ff, #67f4ff 46%, #d8fffb);
+    radial-gradient(circle at 76% 50%, rgba(255, 255, 255, 0.34), transparent 16%),
+    linear-gradient(90deg, #199dad, #52d7e4 48%, #bdeceb);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
-    0 0 1.25rem color-mix(in srgb, var(--panel-accent), transparent 52%);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 0 0.7rem color-mix(in srgb, var(--panel-accent), transparent 72%);
 }
 
 .route-power-sparks {
@@ -778,7 +778,7 @@ body {
 }
 
 .route-power-switch.is-on .route-power-sparks {
-  opacity: 1;
+  opacity: 0.54;
   transform: translateX(0.25rem);
 }
 
@@ -802,7 +802,16 @@ body {
 .route-power-switch.is-on .route-power-thumb {
   transform: translateX(2.42rem);
   background:
-    radial-gradient(circle at 35% 28%, #ffffff, #eaffff 48%, #6befff 100%);
+    radial-gradient(circle at 35% 28%, #ffffff, #ecffff 48%, #83dce5 100%);
+}
+
+.route-power-switch.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.route-power-switch.is-disabled:active {
+  transform: none;
 }
 
 .control-reset-button {
@@ -821,15 +830,6 @@ body {
   color: var(--panel-text);
 }
 
-.globe-loading-core {
-  width: min(50vw, 48svh, 25rem);
-  aspect-ratio: 1;
-  border: 1px solid rgba(136, 223, 255, 0.22);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 42% 34%, rgba(229, 250, 255, 0.52), transparent 0.25rem),
-    radial-gradient(circle at 58% 52%, rgba(89, 225, 255, 0.22), transparent 0.32rem),
-    radial-gradient(circle at center, rgba(79, 184, 255, 0.18), rgba(6, 17, 39, 0.18) 54%, transparent 72%);
 @keyframes orbit-ring-spin {
   0% {
     transform: translate(-50%, -50%) rotate(-22deg);
@@ -850,6 +850,15 @@ body {
   }
 }
 
+.globe-loading-core {
+  width: min(50vw, 48svh, 25rem);
+  aspect-ratio: 1;
+  border: 1px solid rgba(136, 223, 255, 0.22);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 42% 34%, rgba(229, 250, 255, 0.52), transparent 0.25rem),
+    radial-gradient(circle at 58% 52%, rgba(89, 225, 255, 0.22), transparent 0.32rem),
+    radial-gradient(circle at center, rgba(79, 184, 255, 0.18), rgba(6, 17, 39, 0.18) 54%, transparent 72%);
   box-shadow:
     inset 0 0 3rem rgba(44, 168, 255, 0.16),
     0 0 4.5rem rgba(35, 151, 255, 0.24);
