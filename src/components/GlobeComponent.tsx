@@ -146,6 +146,7 @@ type GlobeGroupProps = {
 
 type InteractionState = "idle" | "dragging" | "momentum" | "settling";
 export type GlobeTheme = "dark" | "light";
+type GlobeMode = "network" | "countries" | "oceans";
 
 type GlobeComponentProps = {
   theme?: GlobeTheme;
@@ -153,9 +154,11 @@ type GlobeComponentProps = {
 
 type GlobeControlsState = {
   theme: GlobeTheme;
+  mode: GlobeMode;
   rotationSpeed: number;
   continentIntensity: number;
   routesEnabled: boolean;
+  autoSpin: boolean;
 };
 
 type GlobeSceneProps = GlobeGroupProps & {
@@ -197,44 +200,68 @@ type FlagPinTextureModel = {
   theme: GlobeTheme;
 };
 
+type LabelTextureModel = {
+  texture: CanvasTexture;
+  width: number;
+  height: number;
+};
+
 type LightRouteTone = keyof typeof LIGHT_ROUTE_GLOW_ALPHA_BY_TONE;
 
 const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
   theme: "dark",
+  mode: "network",
   rotationSpeed: 1,
   continentIntensity: 1,
   routesEnabled: true,
+  autoSpin: true,
 };
 
-const CONTROL_PRESETS = [
+const GLOBE_MODE_DEFAULTS = {
+  network: {
+    rotationSpeed: 1,
+    continentIntensity: 1,
+    routesEnabled: true,
+    autoSpin: true,
+  },
+  countries: {
+    rotationSpeed: 0.85,
+    continentIntensity: 1.35,
+    routesEnabled: false,
+    autoSpin: true,
+  },
+  oceans: {
+    rotationSpeed: 0.55,
+    continentIntensity: 0.55,
+    routesEnabled: false,
+    autoSpin: true,
+  },
+} satisfies Record<GlobeMode, Omit<GlobeControlsState, "theme" | "mode">>;
+
+const GLOBE_MODES = [
   {
-    label: "Classic orbit",
-    controls: {
-      theme: "dark",
-      rotationSpeed: 1,
-      continentIntensity: 1,
-      routesEnabled: true,
-    },
+    id: "network",
+    label: "Network",
+    description: "Countries and live routes",
   },
   {
-    label: "Showcase",
-    controls: {
-      theme: "light",
-      rotationSpeed: 1.2,
-      continentIntensity: 2.2,
-      routesEnabled: true,
-    },
+    id: "countries",
+    label: "Countries",
+    description: "Major countries only",
   },
   {
-    label: "Launch mode",
-    controls: {
-      theme: "dark",
-      rotationSpeed: 2.4,
-      continentIntensity: 4,
-      routesEnabled: true,
-    },
+    id: "oceans",
+    label: "Oceans",
+    description: "Ocean labels and currents",
   },
-] satisfies Array<{ label: string; controls: GlobeControlsState }>;
+] satisfies Array<{ id: GlobeMode; label: string; description: string }>;
+
+const OCEAN_REGIONS = [
+  { id: "pacific", name: "Pacific", lat: 7, lon: -151, tone: "#5fe7ff", scale: 1.05 },
+  { id: "atlantic", name: "Atlantic", lat: 2, lon: -32, tone: "#78d9ff", scale: 0.9 },
+  { id: "indian", name: "Indian", lat: -22, lon: 76, tone: "#77f2dc", scale: 0.86 },
+  { id: "southern", name: "Southern", lat: -56, lon: 32, tone: "#b6f4ff", scale: 0.78 },
+] satisfies Array<LandPoint & { id: string; name: string; tone: string; scale: number }>;
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
 const LIGHT_CONTINENT_INTENSITY_GAIN = 1.68;
@@ -632,6 +659,51 @@ function drawFlagPinTexture(pinTexture: FlagPinTextureModel, rotation: number) {
   context.fill();
 
   texture.needsUpdate = true;
+}
+
+function createOceanLabelTexture(name: string, tone: string, theme: GlobeTheme): LabelTextureModel | null {
+  if (typeof document === "undefined") return null;
+
+  const scale = Math.min(window.devicePixelRatio || 1, 2);
+  const width = 224;
+  const height = 86;
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) return null;
+
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  context.scale(scale, scale);
+  context.clearRect(0, 0, width, height);
+
+  const glow = context.createRadialGradient(width / 2, height / 2, 8, width / 2, height / 2, width / 2);
+  glow.addColorStop(0, theme === "light" ? "rgba(255,255,255,0.92)" : "rgba(217,250,255,0.5)");
+  glow.addColorStop(0.36, `${tone}55`);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  context.fillStyle = glow;
+  context.fillRect(0, 0, width, height);
+
+  context.strokeStyle = `${tone}78`;
+  context.lineWidth = 1;
+  context.beginPath();
+  context.ellipse(width / 2, height / 2 + 1, width * 0.38, height * 0.25, 0, 0, Math.PI * 2);
+  context.stroke();
+
+  context.font = "700 22px 'Aptos Display', 'Segoe UI', sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.shadowColor = theme === "light" ? "rgba(15, 23, 42, 0.28)" : tone;
+  context.shadowBlur = theme === "light" ? 9 : 14;
+  context.fillStyle = theme === "light" ? "rgba(15, 23, 42, 0.78)" : "rgba(238, 253, 255, 0.94)";
+  context.fillText(name.toUpperCase(), width / 2, height / 2 - 1);
+
+  const texture = new CanvasTexture(canvas);
+  texture.minFilter = LinearFilter;
+  texture.magFilter = LinearFilter;
+  texture.needsUpdate = true;
+
+  return { texture, width, height };
 }
 
 async function createFlagPinTexture(country: NetworkCountry, theme: GlobeTheme) {
@@ -1234,10 +1306,14 @@ function NetworkRouteLayer({
   prefersReducedMotion,
   isCompactViewport,
   theme,
+  showRoutes,
+  showCountries,
 }: {
   prefersReducedMotion: boolean;
   isCompactViewport: boolean;
   theme: GlobeTheme;
+  showRoutes: boolean;
+  showCountries: boolean;
 }) {
   const countryById = useMemo(getCountryMap, []);
   const badgeCountryIds = useMemo(
@@ -1272,20 +1348,24 @@ function NetworkRouteLayer({
 
   return (
     <group name="digital-network-route-layer">
-      {routeCurves.map(({ route, curve }) => (
-        <NetworkRouteArc key={route.id} route={route} curve={curve} prefersReducedMotion={prefersReducedMotion} theme={theme} />
-      ))}
+      {showRoutes
+        ? routeCurves.map(({ route, curve }) => (
+            <NetworkRouteArc key={route.id} route={route} curve={curve} prefersReducedMotion={prefersReducedMotion} theme={theme} />
+          ))
+        : null}
 
-      {countryPositions.map(({ country, position }) => (
-        <NetworkCountryMarker
-          key={country.id}
-          country={country}
-          position={position}
-          showBadge={badgeCountryIds.has(country.id)}
-          isCompactViewport={isCompactViewport}
-          theme={theme}
-        />
-      ))}
+      {showCountries
+        ? countryPositions.map(({ country, position }) => (
+            <NetworkCountryMarker
+              key={country.id}
+              country={country}
+              position={position}
+              showBadge={badgeCountryIds.has(country.id)}
+              isCompactViewport={isCompactViewport}
+              theme={theme}
+            />
+          ))
+        : null}
     </group>
   );
 }
@@ -1575,6 +1655,115 @@ function NetworkCountryMarker({
   );
 }
 
+function OceanFocusLayer({
+  theme,
+  isCompactViewport,
+}: {
+  theme: GlobeTheme;
+  isCompactViewport: boolean;
+}) {
+  const [textures, setTextures] = useState<Record<string, LabelTextureModel>>({});
+  const camera = useThree((state) => state.camera);
+  const cameraDirectionRef = useRef(new Vector3());
+  const worldPositionRef = useRef(new Vector3());
+  const groupRefs = useRef<Record<string, Group | null>>({});
+  const oceanPositions = useMemo(
+    () =>
+      OCEAN_REGIONS.map((ocean) => ({
+        ocean,
+        position: sphereCoordinateToVector(ocean),
+      })),
+    [],
+  );
+
+  useEffect(() => {
+    const nextTextures = OCEAN_REGIONS.reduce<Record<string, LabelTextureModel>>((accumulator, ocean) => {
+      const texture = createOceanLabelTexture(ocean.name, ocean.tone, theme);
+
+      if (texture) accumulator[ocean.id] = texture;
+
+      return accumulator;
+    }, {});
+
+    setTextures(nextTextures);
+
+    return () => {
+      Object.values(nextTextures).forEach(({ texture }) => texture.dispose());
+    };
+  }, [theme]);
+
+  useFrame(({ clock }) => {
+    const cameraDirection = cameraDirectionRef.current.copy(camera.position).normalize();
+
+    oceanPositions.forEach(({ ocean }) => {
+      const group = groupRefs.current[ocean.id];
+
+      if (!group) return;
+
+      group.getWorldPosition(worldPositionRef.current);
+      const facingAmount = worldPositionRef.current.dot(cameraDirection) / worldPositionRef.current.length();
+      const visibleAmount = clamp((facingAmount - 0.08) / 0.42, 0, 1);
+      group.visible = visibleAmount > 0.04;
+      group.scale.setScalar((isCompactViewport ? 0.75 : 1) * ocean.scale * (0.94 + Math.sin(clock.elapsedTime * 1.6) * 0.025));
+
+      group.children.forEach((child) => {
+        const material = "material" in child ? child.material : null;
+
+        if (material && typeof material === "object" && !Array.isArray(material)) {
+          (material as { opacity?: number }).opacity = visibleAmount;
+        }
+      });
+    });
+  });
+
+  return (
+    <group name="ocean-focus-layer">
+      {oceanPositions.map(({ ocean, position }) => {
+        const labelTexture = textures[ocean.id];
+
+        return (
+          <group
+            key={ocean.id}
+            ref={(group) => {
+              groupRefs.current[ocean.id] = group;
+            }}
+            position={[position.x * 1.04, position.y * 1.04, position.z * 1.04]}
+            renderOrder={8}
+          >
+            <mesh>
+              <sphereGeometry args={[0.052, 20, 20]} />
+              <meshBasicMaterial
+                color={ocean.tone}
+                transparent
+                opacity={0.58}
+                depthTest={false}
+                depthWrite={false}
+                blending={theme === "light" ? NormalBlending : AdditiveBlending}
+              />
+            </mesh>
+            <mesh>
+              <sphereGeometry args={[0.14, 20, 20]} />
+              <meshBasicMaterial
+                color={ocean.tone}
+                transparent
+                opacity={0.14}
+                depthTest={false}
+                depthWrite={false}
+                blending={theme === "light" ? NormalBlending : AdditiveBlending}
+              />
+            </mesh>
+            {labelTexture ? (
+              <sprite position={[0, 0.24, 0]} scale={[0.78, 0.3, 1]} renderOrder={9}>
+                <spriteMaterial map={labelTexture.texture} transparent opacity={0.92} depthTest={false} depthWrite={false} />
+              </sprite>
+            ) : null}
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 function SurfaceGrid({ theme }: { theme: GlobeTheme }) {
   const gridLines = useMemo(() => {
     const isLightTheme = theme === "light";
@@ -1788,22 +1977,25 @@ function ControlRange({
 
 function RoutePowerSwitch({
   checked,
+  disabled = false,
   onChange,
 }: {
   checked: boolean;
+  disabled?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
     <button
-      className={`route-power-switch${checked ? " is-on" : ""}`}
+      className={`route-power-switch${checked ? " is-on" : ""}${disabled ? " is-disabled" : ""}`}
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
     >
       <span className="route-power-copy">
         <span>Live routes</span>
-        <strong>{checked ? "Transmission online" : "Network hidden"}</strong>
+        <strong>{disabled ? "Mode keeps routes hidden" : checked ? "Transmission online" : "Network hidden"}</strong>
       </span>
       <span className="route-power-track" aria-hidden="true">
         <span className="route-power-sparks" />
@@ -1811,6 +2003,14 @@ function RoutePowerSwitch({
       </span>
     </button>
   );
+}
+
+function getModeControls(theme: GlobeTheme, mode: GlobeMode): GlobeControlsState {
+  return {
+    theme,
+    mode,
+    ...GLOBE_MODE_DEFAULTS[mode],
+  };
 }
 
 function GlobeControlPanel({
@@ -1830,40 +2030,23 @@ function GlobeControlPanel({
     },
     [controls, onControlsChange],
   );
-  const resetControls = useCallback(() => onControlsChange(DEFAULT_GLOBE_CONTROLS), [onControlsChange]);
-  const [copied, setCopied] = useState(false);
-  const activePresetIndex = useMemo(
-    () =>
-      CONTROL_PRESETS.findIndex(
-        (preset) =>
-          preset.controls.theme === controls.theme &&
-          preset.controls.rotationSpeed === controls.rotationSpeed &&
-          preset.controls.continentIntensity === controls.continentIntensity &&
-          preset.controls.routesEnabled === controls.routesEnabled,
-      ),
+  const resetControls = useCallback(
+    () => onControlsChange(getModeControls(controls.theme, controls.mode)),
+    [controls.mode, controls.theme, onControlsChange],
+  );
+  const activeModeIndex = useMemo(
+    () => GLOBE_MODES.findIndex((mode) => mode.id === controls.mode),
     [controls],
   );
-  const activePresetLabel = activePresetIndex >= 0 ? CONTROL_PRESETS[activePresetIndex].label : "Custom rig";
-  const applyNextPreset = useCallback(() => {
-    const nextPreset = CONTROL_PRESETS[(activePresetIndex + 1) % CONTROL_PRESETS.length];
+  const activeMode = GLOBE_MODES[activeModeIndex >= 0 ? activeModeIndex : 0];
+  const routesActive = controls.mode === "network" && controls.routesEnabled;
+  const routesLocked = controls.mode !== "network";
+  const applyNextMode = useCallback(() => {
+    const nextMode = GLOBE_MODES[(activeModeIndex + 1) % GLOBE_MODES.length];
 
-    onControlsChange(nextPreset.controls);
-  }, [activePresetIndex, onControlsChange]);
-  const boostControls = useCallback(() => {
-    onControlsChange({
-      ...controls,
-      rotationSpeed: Math.min(4, Number((controls.rotationSpeed + 0.6).toFixed(1))),
-      continentIntensity: Math.min(8, Number((controls.continentIntensity + 1).toFixed(2))),
-      routesEnabled: true,
-    });
-  }, [controls, onControlsChange]);
-  const copyControls = useCallback(() => {
-    const serializedControls = JSON.stringify(controls, null, 2);
-
-    void navigator.clipboard?.writeText(serializedControls);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1400);
-  }, [controls]);
+    onControlsChange(getModeControls(controls.theme, nextMode.id));
+  }, [activeModeIndex, controls.theme, onControlsChange]);
+  const toggleAutoSpin = useCallback(() => updateControl("autoSpin", !controls.autoSpin), [controls.autoSpin, updateControl]);
 
   if (!isOpen) {
     return (
@@ -1897,15 +2080,21 @@ function GlobeControlPanel({
       </header>
 
       <div className="control-panel-actions">
-        <button className="control-boost-button" type="button" onClick={boostControls}>
-          Boost
+        <button
+          className={`control-orbit-button${controls.autoSpin ? " is-spinning" : ""}`}
+          type="button"
+          aria-label={controls.autoSpin ? "Pause auto spin" : "Resume auto spin"}
+          aria-pressed={controls.autoSpin}
+          onClick={toggleAutoSpin}
+        >
+          <span className="orbit-icon" aria-hidden="true" />
         </button>
-        <button className="control-version-button" type="button" onClick={applyNextPreset}>
-          <span>{activePresetLabel}</span>
+        <button className="control-version-button" type="button" onClick={applyNextMode}>
+          <span>{activeMode.label}</span>
           <span aria-hidden="true">v</span>
         </button>
-        <button className="control-copy-button" type="button" onClick={copyControls}>
-          {copied ? "Copied" : "Export"}
+        <button className="control-copy-button" type="button" onClick={() => onOpenChange(false)}>
+          Focus
         </button>
       </div>
 
@@ -1955,13 +2144,17 @@ function GlobeControlPanel({
       <section className="control-section control-section-collapsed">
         <div className="control-section-title">
           <span>Routes</span>
-          <span aria-hidden="true">{controls.routesEnabled ? "on" : "off"}</span>
+          <span aria-hidden="true">{routesActive ? "on" : "off"}</span>
         </div>
-        <RoutePowerSwitch checked={controls.routesEnabled} onChange={(value) => updateControl("routesEnabled", value)} />
+        <RoutePowerSwitch
+          checked={routesActive}
+          disabled={routesLocked}
+          onChange={(value) => updateControl("routesEnabled", value)}
+        />
       </section>
 
       <button className="control-reset-button" type="button" onClick={resetControls}>
-        Reset globe
+        Reset view
       </button>
     </aside>
   );
@@ -2087,9 +2280,11 @@ function GlobeGroup({
       velocity.y = 0;
     }
 
-    const idleSpeed = prefersReducedMotion
-      ? REDUCED_MOTION_IDLE_SPEED
-      : IDLE_ROTATION_SPEED * controls.rotationSpeed;
+    const idleSpeed = !controls.autoSpin
+      ? 0
+      : prefersReducedMotion
+        ? REDUCED_MOTION_IDLE_SPEED
+        : IDLE_ROTATION_SPEED * controls.rotationSpeed;
     if (autoRotationResumeDelayRef.current <= 0) {
       yawGroupRef.current.rotation.y += delta * idleSpeed * getIdleBlend(Math.max(Math.abs(velocity.x), Math.abs(velocity.y)));
     }
@@ -2210,13 +2405,16 @@ function GlobeGroup({
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, DEFAULT_ROTATION_Y, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface theme={controls.theme} continentIntensity={controls.continentIntensity} />
-          {SHOW_NETWORK_LAYER && controls.routesEnabled ? (
+          {SHOW_NETWORK_LAYER && controls.mode !== "oceans" ? (
             <NetworkRouteLayer
               prefersReducedMotion={prefersReducedMotion}
               isCompactViewport={isCompactViewport}
               theme={controls.theme}
+              showRoutes={controls.mode === "network" && controls.routesEnabled}
+              showCountries={controls.mode === "network" || controls.mode === "countries"}
             />
           ) : null}
+          {controls.mode === "oceans" ? <OceanFocusLayer theme={controls.theme} isCompactViewport={isCompactViewport} /> : null}
         </group>
       </group>
     </group>
