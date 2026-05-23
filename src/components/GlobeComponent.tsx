@@ -2026,11 +2026,6 @@ function ControlGlobeModel({ isSpinning }: { isSpinning: boolean }) {
         <meshBasicMaterial color="#d8fbff" transparent opacity={0.13} depthWrite={false} />
       </mesh>
 
-      <mesh>
-        <torusGeometry args={[0.865, 0.024, 8, 96]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.94} depthWrite={false} />
-      </mesh>
-
       <mesh scale={[1, 0.34, 1]}>
         <torusGeometry args={[0.74, 0.018, 8, 96]} />
         <meshBasicMaterial color="#eaffff" transparent opacity={0.82} depthWrite={false} />
