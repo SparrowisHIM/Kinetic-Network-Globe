@@ -2011,44 +2011,34 @@ function ControlGlobeModel({ isSpinning }: { isSpinning: boolean }) {
   useFrame((_, delta) => {
     if (!isSpinning || !globeRef.current) return;
 
-    globeRef.current.rotation.y += delta * 1.65;
+    globeRef.current.rotation.y += delta * 1.05;
   });
 
   return (
-    <group ref={globeRef} rotation={[-0.18, 0, -0.18]}>
+    <group ref={globeRef} rotation={[-0.22, 0, -0.16]}>
       <mesh>
-        <sphereGeometry args={[0.82, 32, 18]} />
-        <meshBasicMaterial color="#7ee5ff" transparent opacity={0.08} depthWrite={false} />
+        <sphereGeometry args={[0.84, 32, 24]} />
+        <meshStandardMaterial color="#62dce9" emissive="#0b6572" emissiveIntensity={0.55} roughness={0.38} metalness={0.12} />
       </mesh>
 
       <mesh>
-        <sphereGeometry args={[0.74, 32, 18]} />
-        <meshBasicMaterial color="#225866" transparent opacity={0.42} depthWrite={false} />
+        <sphereGeometry args={[0.88, 32, 24]} />
+        <meshBasicMaterial color="#d8fbff" transparent opacity={0.13} depthWrite={false} />
       </mesh>
 
       <mesh>
-        <torusGeometry args={[0.78, 0.018, 8, 96]} />
-        <meshBasicMaterial color="#f7f9fc" transparent opacity={0.86} depthWrite={false} />
+        <torusGeometry args={[0.865, 0.015, 8, 96]} />
+        <meshBasicMaterial color="#f7f9fc" transparent opacity={0.84} depthWrite={false} />
       </mesh>
 
       <mesh scale={[1, 0.34, 1]}>
-        <torusGeometry args={[0.72, 0.014, 8, 96]} />
-        <meshBasicMaterial color="#a8f5ff" transparent opacity={0.76} depthWrite={false} />
+        <torusGeometry args={[0.74, 0.012, 8, 96]} />
+        <meshBasicMaterial color="#d9fbff" transparent opacity={0.68} depthWrite={false} />
       </mesh>
 
       <mesh rotation={[0, Math.PI / 2, 0]}>
-        <torusGeometry args={[0.76, 0.014, 8, 96]} />
-        <meshBasicMaterial color="#e9fbff" transparent opacity={0.68} depthWrite={false} />
-      </mesh>
-
-      <mesh rotation={[0, Math.PI / 3, 0]}>
-        <torusGeometry args={[0.76, 0.012, 8, 96]} />
-        <meshBasicMaterial color="#77e6ff" transparent opacity={0.58} depthWrite={false} />
-      </mesh>
-
-      <mesh rotation={[0, -Math.PI / 3, 0]}>
-        <torusGeometry args={[0.76, 0.012, 8, 96]} />
-        <meshBasicMaterial color="#77e6ff" transparent opacity={0.5} depthWrite={false} />
+        <torusGeometry args={[0.82, 0.012, 8, 96]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.5} depthWrite={false} />
       </mesh>
     </group>
   );
