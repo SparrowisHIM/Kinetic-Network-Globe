@@ -421,7 +421,7 @@ body {
 }
 
 .control-icon-button,
-.control-boost-button,
+.control-orbit-button,
 .control-version-button,
 .control-copy-button,
 .control-mode-row button,
@@ -444,7 +444,7 @@ body {
 }
 
 .control-icon-button:active,
-.control-boost-button:active,
+.control-orbit-button:active,
 .control-version-button:active,
 .control-copy-button:active,
 .control-mode-row button:active,
@@ -454,7 +454,7 @@ body {
 }
 
 .control-icon-button:focus-visible,
-.control-boost-button:focus-visible,
+.control-orbit-button:focus-visible,
 .control-version-button:focus-visible,
 .control-copy-button:focus-visible,
 .control-mode-row button:focus-visible,
@@ -495,14 +495,61 @@ body {
   display: none;
 }
 
-.control-boost-button {
+.control-orbit-button {
+  position: relative;
+  display: grid;
   flex: 0 0 auto;
+  width: 2.35rem;
   min-height: 2.25rem;
-  padding: 0 0.74rem;
+  place-items: center;
+  padding: 0;
   color: color-mix(in srgb, var(--panel-accent), white 34%);
-  text-transform: uppercase;
-  letter-spacing: 0;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--panel-accent), transparent 74%);
+}
+
+.orbit-icon {
+  position: relative;
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--panel-accent), white 22%);
+  border-radius: 999px;
+  box-shadow:
+    inset -0.16rem -0.1rem 0.22rem rgba(0, 0, 0, 0.28),
+    0 0 0.72rem color-mix(in srgb, var(--panel-accent), transparent 66%);
+}
+
+.orbit-icon::before,
+.orbit-icon::after {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.orbit-icon::before {
+  width: 1.56rem;
+  height: 0.54rem;
+  border: 1px solid color-mix(in srgb, var(--panel-accent), transparent 28%);
+  border-radius: 999px;
+  transform: translate(-50%, -50%) rotate(-22deg);
+}
+
+.orbit-icon::after {
+  width: 0.22rem;
+  height: 0.22rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-accent), white 30%);
+  box-shadow: 0 0 0.45rem color-mix(in srgb, var(--panel-accent), transparent 12%);
+  transform: translate(0.42rem, -0.34rem);
+}
+
+.control-orbit-button.is-spinning .orbit-icon::before {
+  animation: orbit-ring-spin 3.4s linear infinite;
+}
+
+.control-orbit-button.is-spinning .orbit-icon::after {
+  animation: orbit-dot-spin 3.4s linear infinite;
 }
 
 .control-version-button,
@@ -766,7 +813,7 @@ body {
 .control-reset-button:hover,
 .control-copy-button:hover,
 .control-version-button:hover,
-.control-boost-button:hover,
+.control-orbit-button:hover,
 .control-icon-button:hover,
 .control-mode-row button:hover,
 .route-power-switch:hover {
@@ -783,6 +830,26 @@ body {
     radial-gradient(circle at 42% 34%, rgba(229, 250, 255, 0.52), transparent 0.25rem),
     radial-gradient(circle at 58% 52%, rgba(89, 225, 255, 0.22), transparent 0.32rem),
     radial-gradient(circle at center, rgba(79, 184, 255, 0.18), rgba(6, 17, 39, 0.18) 54%, transparent 72%);
+@keyframes orbit-ring-spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(-22deg);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotate(338deg);
+  }
+}
+
+@keyframes orbit-dot-spin {
+  0% {
+    transform: rotate(0deg) translate(0.55rem) rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg) translate(0.55rem) rotate(-360deg);
+  }
+}
+
   box-shadow:
     inset 0 0 3rem rgba(44, 168, 255, 0.16),
     0 0 4.5rem rgba(35, 151, 255, 0.24);
@@ -907,15 +974,26 @@ body {
   }
 
   .control-version-button,
-  .control-boost-button,
+  .control-orbit-button,
   .control-copy-button {
     min-height: 2rem;
     padding: 0 0.56rem;
     font-size: 0.68rem;
   }
 
-  .control-boost-button {
-    padding-inline: 0.5rem;
+  .control-orbit-button {
+    width: 2.05rem;
+    padding: 0;
+  }
+
+  .orbit-icon {
+    width: 0.92rem;
+    height: 0.92rem;
+  }
+
+  .orbit-icon::before {
+    width: 1.34rem;
+    height: 0.46rem;
   }
 
   .control-section {
