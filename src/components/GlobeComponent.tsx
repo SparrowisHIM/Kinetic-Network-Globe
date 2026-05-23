@@ -146,7 +146,6 @@ type GlobeGroupProps = {
 
 type InteractionState = "idle" | "dragging" | "momentum" | "settling";
 export type GlobeTheme = "dark" | "light";
-type GlobeMode = "network" | "countries" | "oceans";
 
 type GlobeComponentProps = {
   theme?: GlobeTheme;
@@ -154,7 +153,6 @@ type GlobeComponentProps = {
 
 type GlobeControlsState = {
   theme: GlobeTheme;
-  mode: GlobeMode;
   rotationSpeed: number;
   continentIntensity: number;
   routesEnabled: boolean;
@@ -200,68 +198,15 @@ type FlagPinTextureModel = {
   theme: GlobeTheme;
 };
 
-type LabelTextureModel = {
-  texture: CanvasTexture;
-  width: number;
-  height: number;
-};
-
 type LightRouteTone = keyof typeof LIGHT_ROUTE_GLOW_ALPHA_BY_TONE;
 
 const DEFAULT_GLOBE_CONTROLS: GlobeControlsState = {
   theme: "dark",
-  mode: "network",
   rotationSpeed: 1,
   continentIntensity: 1,
   routesEnabled: true,
   autoSpin: true,
 };
-
-const GLOBE_MODE_DEFAULTS = {
-  network: {
-    rotationSpeed: 1,
-    continentIntensity: 1,
-    routesEnabled: true,
-    autoSpin: true,
-  },
-  countries: {
-    rotationSpeed: 0.85,
-    continentIntensity: 1.35,
-    routesEnabled: false,
-    autoSpin: true,
-  },
-  oceans: {
-    rotationSpeed: 0.55,
-    continentIntensity: 0.55,
-    routesEnabled: false,
-    autoSpin: true,
-  },
-} satisfies Record<GlobeMode, Omit<GlobeControlsState, "theme" | "mode">>;
-
-const GLOBE_MODES = [
-  {
-    id: "network",
-    label: "Network",
-    description: "Countries and live routes",
-  },
-  {
-    id: "countries",
-    label: "Countries",
-    description: "Major countries only",
-  },
-  {
-    id: "oceans",
-    label: "Oceans",
-    description: "Ocean labels and currents",
-  },
-] satisfies Array<{ id: GlobeMode; label: string; description: string }>;
-
-const OCEAN_REGIONS = [
-  { id: "pacific", name: "Pacific", lat: 7, lon: -151, tone: "#5fe7ff", scale: 1.05 },
-  { id: "atlantic", name: "Atlantic", lat: 2, lon: -32, tone: "#78d9ff", scale: 0.9 },
-  { id: "indian", name: "Indian", lat: -22, lon: 76, tone: "#77f2dc", scale: 0.86 },
-  { id: "southern", name: "Southern", lat: -56, lon: 32, tone: "#b6f4ff", scale: 0.78 },
-] satisfies Array<LandPoint & { id: string; name: string; tone: string; scale: number }>;
 
 const DARK_CONTINENT_INTENSITY_GAIN = 1.65;
 const LIGHT_CONTINENT_INTENSITY_GAIN = 1.68;
@@ -2058,14 +2003,6 @@ function ControlGlobeIcon({ isSpinning }: { isSpinning: boolean }) {
   );
 }
 
-function getModeControls(theme: GlobeTheme, mode: GlobeMode): GlobeControlsState {
-  return {
-    theme,
-    mode,
-    ...GLOBE_MODE_DEFAULTS[mode],
-  };
-}
-
 function GlobeControlPanel({
   controls,
   onControlsChange,
@@ -2084,21 +2021,9 @@ function GlobeControlPanel({
     [controls, onControlsChange],
   );
   const resetControls = useCallback(
-    () => onControlsChange(getModeControls(controls.theme, controls.mode)),
-    [controls.mode, controls.theme, onControlsChange],
+    () => onControlsChange({ ...DEFAULT_GLOBE_CONTROLS, theme: controls.theme }),
+    [controls.theme, onControlsChange],
   );
-  const activeModeIndex = useMemo(
-    () => GLOBE_MODES.findIndex((mode) => mode.id === controls.mode),
-    [controls],
-  );
-  const activeMode = GLOBE_MODES[activeModeIndex >= 0 ? activeModeIndex : 0];
-  const routesActive = controls.mode === "network" && controls.routesEnabled;
-  const routesLocked = controls.mode !== "network";
-  const applyNextMode = useCallback(() => {
-    const nextMode = GLOBE_MODES[(activeModeIndex + 1) % GLOBE_MODES.length];
-
-    onControlsChange(getModeControls(controls.theme, nextMode.id));
-  }, [activeModeIndex, controls.theme, onControlsChange]);
   const toggleAutoSpin = useCallback(() => updateControl("autoSpin", !controls.autoSpin), [controls.autoSpin, updateControl]);
 
   if (!isOpen) {
@@ -2141,10 +2066,6 @@ function GlobeControlPanel({
           onClick={toggleAutoSpin}
         >
           <ControlGlobeIcon isSpinning={controls.autoSpin} />
-        </button>
-        <button className="control-version-button" type="button" onClick={applyNextMode}>
-          <span>{activeMode.label}</span>
-          <span aria-hidden="true">v</span>
         </button>
         <button className="control-copy-button" type="button" onClick={() => onOpenChange(false)}>
           Focus
@@ -2197,11 +2118,10 @@ function GlobeControlPanel({
       <section className="control-section control-section-collapsed">
         <div className="control-section-title">
           <span>Routes</span>
-          <span aria-hidden="true">{routesActive ? "on" : "off"}</span>
+          <span aria-hidden="true">{controls.routesEnabled ? "on" : "off"}</span>
         </div>
         <RoutePowerSwitch
-          checked={routesActive}
-          disabled={routesLocked}
+          checked={controls.routesEnabled}
           onChange={(value) => updateControl("routesEnabled", value)}
         />
       </section>
@@ -2458,16 +2378,15 @@ function GlobeGroup({
       <group ref={yawGroupRef} name="main-globe-yaw-group" rotation={[0, DEFAULT_ROTATION_Y, 0]}>
         <group ref={tiltGroupRef} name="main-globe-temporary-tilt-group">
           <DigitalGlobeSurface theme={controls.theme} continentIntensity={controls.continentIntensity} />
-          {SHOW_NETWORK_LAYER && controls.mode !== "oceans" ? (
+          {SHOW_NETWORK_LAYER ? (
             <NetworkRouteLayer
               prefersReducedMotion={prefersReducedMotion}
               isCompactViewport={isCompactViewport}
               theme={controls.theme}
-              showRoutes={controls.mode === "network" && controls.routesEnabled}
-              showCountries={controls.mode === "network" || controls.mode === "countries"}
+              showRoutes={controls.routesEnabled}
+              showCountries
             />
           ) : null}
-          {controls.mode === "oceans" ? <OceanFocusLayer theme={controls.theme} isCompactViewport={isCompactViewport} /> : null}
         </group>
       </group>
     </group>
