@@ -11,3 +11,5 @@ vite.config.js
 reference-frame-*.png
 .debug-*.png
 .audit-*.png
+
+.vercel
