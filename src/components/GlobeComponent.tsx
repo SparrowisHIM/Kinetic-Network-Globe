@@ -646,7 +646,7 @@ function roundDebugValue(value: number) {
 }
 
 function logLandDotYBounds(minY: number, maxY: number, yTotal: number, count: number) {
-  if (!import.meta.env.DEV || count === 0) return;
+  if (!GLOBE_DEBUG_MODE || !import.meta.env.DEV || count === 0) return;
 
   console.info("[globe] land dot y distribution", {
     minY: roundDebugValue(minY),
@@ -1306,9 +1306,12 @@ function NetworkRouteArc({
   );
   const endpointSamples = useMemo(() => [curve.getPointAt(0), curve.getPointAt(1)], [curve]);
   const worldSampleRef = useRef(new Vector3());
+  const routeElapsedRef = useRef(0);
 
-  useFrame(({ clock }) => {
+  useFrame((_, delta) => {
     if (!routeRef.current) return;
+
+    routeElapsedRef.current += delta;
 
     const cameraDirection = cameraDirectionRef.current.copy(camera.position).normalize();
     const maxRouteFacing = visibilitySamples.reduce((maxFacing, sample) => {
@@ -1350,7 +1353,7 @@ function NetworkRouteArc({
       return;
     }
 
-    const progress = (clock.elapsedTime * ROUTE_PULSE_SPEED + route.delay) % 1;
+    const progress = (routeElapsedRef.current * ROUTE_PULSE_SPEED + route.delay) % 1;
     const easedProgress = 0.5 - Math.cos(progress * Math.PI) * 0.5;
     const pulsePosition = curve.getPointAt(easedProgress);
     const worldPulsePosition = routeRef.current.localToWorld(worldSampleRef.current.copy(pulsePosition));
@@ -1474,8 +1477,12 @@ function NetworkCountryMarker({
 
   useEffect(() => () => badgeTexture?.texture.dispose(), [badgeTexture]);
 
-  useFrame(({ clock }) => {
+  const badgeElapsedRef = useRef(0);
+
+  useFrame((_, delta) => {
     if (!markerRef.current) return;
+
+    badgeElapsedRef.current += delta;
 
     const worldPosition = worldPositionRef.current;
     markerRef.current.getWorldPosition(worldPosition);
@@ -1494,9 +1501,9 @@ function NetworkCountryMarker({
 
     markerRef.current.visible = nextBadgeVisible;
 
-    if (nextBadgeVisible && badgeTexture && clock.elapsedTime - lastTextureDrawAtRef.current > 1 / FLAG_PIN_TEXTURE_FPS) {
-      lastTextureDrawAtRef.current = clock.elapsedTime;
-      drawFlagPinTexture(badgeTexture, clock.elapsedTime * 0.72);
+    if (nextBadgeVisible && badgeTexture && badgeElapsedRef.current - lastTextureDrawAtRef.current > 1 / FLAG_PIN_TEXTURE_FPS) {
+      lastTextureDrawAtRef.current = badgeElapsedRef.current;
+      drawFlagPinTexture(badgeTexture, badgeElapsedRef.current * 0.72);
     }
 
     if (lastBadgeVisibleRef.current !== nextBadgeVisible) {
